@@ -125,5 +125,5 @@ decorator gerekli, eklemeyen gereksiz.**
 - **`deletedAt: null` filtresini unutma.** Soft delete'li modelde her sorguya
   elle yazılır. `include`/`select` ile gelen ilişkiye yazılamaz — orada çekilen
   kaydı elle kontrol et.
-- **Prisma sürümü sabit** (`7.10.0`). `prisma` paketinin npm `latest` etiketi bir
+- **Prisma sürümü sabit** (`7.10.0`). `prisma` paketinin pnpm `latest` etiketi bir
   release candidate gösteriyor; `@latest` ile güncelleme yapma.

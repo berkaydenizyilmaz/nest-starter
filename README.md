@@ -156,6 +156,6 @@ Bilerek dışarıda; ihtiyaç duyan projede eklenir.
 ## Dikkat
 
 - **ESM projesi.** Relative import'lar `.js` uzantılı olmalı.
-- **Prisma sürümü sabit** (`7.10.0`). `prisma` paketinin npm `latest` etiketi bir
+- **Prisma sürümü sabit** (`7.10.0`). `prisma` paketinin pnpm `latest` etiketi bir
   release candidate gösteriyor; `@latest` ile güncelleme yapma.
 - `src/generated/` üretilen kod, gitignore'da. `pnpm install` sonrası otomatik oluşur.
