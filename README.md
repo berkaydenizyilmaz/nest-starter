@@ -11,12 +11,12 @@ Nest 12 + ESM · Zod · Prisma 7 · pino · Vitest
 git clone https://github.com/berkaydenizyilmaz/nest-starter.git yeni-proje && cd yeni-proje
 rm -rf .git && git init
 
-npm install                      # postinstall Prisma client'ı üretir
+pnpm install                      # postinstall Prisma client'ı üretir
 cp .env.example .env
 openssl rand -base64 48          # JWT_ACCESS_SECRET'a yaz
 
-npx prisma migrate dev --name init
-npm run start:dev
+pnpm dlx prisma migrate dev --name init
+pnpm start:dev
 ```
 
 Node.js'in stabil (LTS) sürümlerinden biri (**22.22.3+** veya **24.15+**) ve PostgreSQL gerekir.
@@ -74,12 +74,12 @@ hop sayısına eşit olmalı.
 
 | Komut | |
 |---|---|
-| `npm run start:dev` | Geliştirme (watch) |
-| `npm run build` | Derleme |
-| `npm run lint` | oxlint |
-| `npm test` | Vitest |
-| `npx prisma migrate dev --name <ad>` | Şema değişikliği |
-| `npx prisma studio` | Veritabanı arayüzü |
+| `pnpm start:dev` | Geliştirme (watch) |
+| `pnpm build` | Derleme |
+| `pnpm lint` | oxlint |
+| `pnpm test` | Vitest |
+| `pnpm dlx prisma migrate dev --name <ad>` | Şema değişikliği |
+| `pnpm dlx prisma studio` | Veritabanı arayüzü |
 
 ## Yapı
 
@@ -158,4 +158,4 @@ Bilerek dışarıda; ihtiyaç duyan projede eklenir.
 - **ESM projesi.** Relative import'lar `.js` uzantılı olmalı.
 - **Prisma sürümü sabit** (`7.10.0`). `prisma` paketinin npm `latest` etiketi bir
   release candidate gösteriyor; `@latest` ile güncelleme yapma.
-- `src/generated/` üretilen kod, gitignore'da. `npm install` sonrası otomatik oluşur.
+- `src/generated/` üretilen kod, gitignore'da. `pnpm install` sonrası otomatik oluşur.
