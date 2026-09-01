@@ -8,7 +8,7 @@ Nest 12 + ESM · Zod · Prisma 7 · pino · Vitest
 ## Kurulum
 
 ```bash
-git clone <bu-repo> yeni-proje && cd yeni-proje
+git clone https://github.com/berkaydenizyilmaz/nest-starter.git yeni-proje && cd yeni-proje
 rm -rf .git && git init
 
 npm install                      # postinstall Prisma client'ı üretir
@@ -19,8 +19,8 @@ npx prisma migrate dev --name init
 npm run start:dev
 ```
 
-Node.js **22.22.3+** veya **24.15+** ve PostgreSQL gerekir. Tek numaralı sürüm
-hatları (23.x, 25.x) desteklenmiyor — LTS kullan.
+Node.js'in stabil (LTS) sürümlerinden biri (**22.22.3+** veya **24.15+**) ve PostgreSQL gerekir.
+Ara/deneme sürümleri (23.x, 25.x gibi) desteklenmiyor — mutlaka LTS kullanın.
 
 ## Endpoint'ler
 

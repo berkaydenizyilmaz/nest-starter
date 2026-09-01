@@ -1,4 +1,4 @@
-# NestJS starter — proje kuralları
+# Proje kuralları
 
 ## Yapı
 
