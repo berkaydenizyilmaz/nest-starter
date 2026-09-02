@@ -28,7 +28,7 @@ export class UserService {
     return user;
   }
 
-  async deleteAccount(userId: string): Promise<void> {
+  async remove(userId: string): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       const deleted = await tx.user.updateMany({
         where: { id: userId, deletedAt: null },

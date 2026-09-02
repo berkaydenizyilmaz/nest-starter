@@ -52,7 +52,7 @@ export class SessionService {
       },
     });
 
-    await this.revokeSessionsBeyondLimit(userId, client);
+    await this.revokeBeyondLimit(userId, client);
 
     return { token, sessionId: session.id };
   }
@@ -134,14 +134,14 @@ export class SessionService {
     });
   }
 
-  async listActive(userId: string): Promise<Session[]> {
+  async findAllActive(userId: string): Promise<Session[]> {
     return this.prisma.session.findMany({
       where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
       orderBy: { lastUsedAt: 'desc' },
     });
   }
 
-  private async revokeSessionsBeyondLimit(
+  private async revokeBeyondLimit(
     userId: string,
     client: Prisma.TransactionClient,
   ): Promise<void> {
@@ -184,7 +184,7 @@ export class SessionService {
     }
 
     if (session.previousHash === hash && !this.withinGraceWindow(session)) {
-      await this.reuseDetected(session.userId);
+      await this.rejectReuse(session.userId);
     }
 
     if (session.expiresAt <= new Date()) {
@@ -222,7 +222,7 @@ export class SessionService {
       : { token, user: session.user, sessionId: session.id };
   }
 
-  private async reuseDetected(userId: string): Promise<never> {
+  private async rejectReuse(userId: string): Promise<never> {
     await this.audit.record({
       event: AUTH_AUDIT.SESSION_TOKEN_REUSE,
       outcome: AuditOutcome.FAILURE,

@@ -46,13 +46,13 @@ export class UserController {
     @CurrentUser('id') userId: string,
     @Query({ schema: cursorQuerySchema }) query: CursorQuery,
   ): Promise<SecurityLogPageInput> {
-    return this.audit.listForActor(userId, query);
+    return this.audit.findAllByActor(userId, query);
   }
 
   @Delete('me')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiErrors(HttpStatus.UNAUTHORIZED, HttpStatus.NOT_FOUND)
   deleteMe(@CurrentUser('id') userId: string): Promise<void> {
-    return this.users.deleteAccount(userId);
+    return this.users.remove(userId);
   }
 }

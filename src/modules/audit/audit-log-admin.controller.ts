@@ -36,6 +36,6 @@ export class AuditLogAdminController {
   listAuditLogs(
     @Query({ schema: auditLogQuerySchema }) query: AuditLogQueryDto,
   ): Promise<AuditLogPageInput> {
-    return this.audit.list(query);
+    return this.audit.findAll(query);
   }
 }

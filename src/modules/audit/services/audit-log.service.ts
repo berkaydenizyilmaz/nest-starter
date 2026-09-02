@@ -14,7 +14,7 @@ import type { SecurityLogPageInput } from '../dto/security-log.response.js';
 export class AuditLogService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(query: AuditLogQueryDto): Promise<AuditLogPageInput> {
+  async findAll(query: AuditLogQueryDto): Promise<AuditLogPageInput> {
     const where = this.buildWhere(query);
 
     const [rows, total] = await Promise.all([
@@ -30,7 +30,7 @@ export class AuditLogService {
     return buildOffsetPage(rows, query, total);
   }
 
-  async listForActor(
+  async findAllByActor(
     actorId: string,
     query: CursorQuery,
   ): Promise<SecurityLogPageInput> {

@@ -30,7 +30,7 @@ export class SessionController {
   @ApiOkResponse({ standardSchema: sessionListSchema })
   @ApiErrors(HttpStatus.UNAUTHORIZED)
   async list(@CurrentUser() user: AuthUser): Promise<SessionListInput> {
-    const sessions = await this.sessions.listActive(user.id);
+    const sessions = await this.sessions.findAllActive(user.id);
     return sessions.map((session) =>
       toSessionResponse(session, user.sessionId),
     );
