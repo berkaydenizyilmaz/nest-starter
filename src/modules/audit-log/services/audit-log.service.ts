@@ -3,20 +3,18 @@ import { PrismaService } from '../../../core/prisma/prisma.service.js';
 import {
   buildCursorPage,
   buildOffsetPage,
+  type CursorPage,
+  type OffsetPage,
 } from '../../../common/utils/pagination.util.js';
 import type { CursorPageRequest } from '../../../common/schemas/pagination.schema.js';
-import { Prisma } from '../../../generated/prisma/client.js';
+import { type AuditLog, Prisma } from '../../../generated/prisma/client.js';
 import type { ListAuditLogsRequest } from '../dto/list-audit-logs.request.js';
-import type { AuditLogPageResponseInput } from '../dto/audit-log.response.js';
-import type { SecurityLogPageResponseInput } from '../dto/security-log.response.js';
 
 @Injectable()
 export class AuditLogService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(
-    query: ListAuditLogsRequest,
-  ): Promise<AuditLogPageResponseInput> {
+  async findAll(query: ListAuditLogsRequest): Promise<OffsetPage<AuditLog>> {
     const where = this.buildWhere(query);
 
     const [rows, total] = await Promise.all([
@@ -35,7 +33,7 @@ export class AuditLogService {
   async findAllByActor(
     actorId: string,
     query: CursorPageRequest,
-  ): Promise<SecurityLogPageResponseInput> {
+  ): Promise<CursorPage<AuditLog>> {
     const rows = await this.prisma.auditLog.findMany({
       where: { actorId },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],

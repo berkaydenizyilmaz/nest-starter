@@ -18,7 +18,7 @@ import { AuditLogService } from '../audit-log/services/audit-log.service.js';
 import {
   type SecurityLogPageResponseInput,
   securityLogPageResponseSchema,
-} from '../audit-log/dto/security-log.response.js';
+} from './dto/security-log.response.js';
 import { type MeResponseInput, meResponseSchema } from './dto/me.response.js';
 import { UserService } from './services/user.service.js';
 

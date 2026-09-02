@@ -1,11 +1,11 @@
 import type { OffsetPageRequest } from '../schemas/pagination.schema.js';
 
-interface CursorPage<T> {
+export interface CursorPage<T> {
   data: T[];
   meta: { nextCursor: string | null; hasMore: boolean };
 }
 
-interface OffsetPage<T> {
+export interface OffsetPage<T> {
   data: T[];
   meta: { page: number; limit: number; total: number; hasMore: boolean };
 }
