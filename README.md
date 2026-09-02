@@ -181,21 +181,42 @@ seviye. Token ve cookie redact ediliyor.
 kapanış platformun `SIGKILL`'ini beklemiyor.
 
 **Kötüye kullanım koruması.** İki ayrı kontrol var, çünkü farklı saldırıları
-durduruyorlar. **Rate limit** doğrulanmış isteği kullanıcıya, doğrulanmamışı IP'ye
-göre sayar — tek NAT arkasındaki kullanıcılar birbirinin kotasını yemez. Sayaç
+durduruyorlar. **Rate limit** korumalı endpoint'lerde kullanıcıya, açık
+endpoint'lerde (`/auth/*`) IP'ye göre sayar; yani NAT ya da CGNAT arkasındaki
+kullanıcılar birbirinin kotasını yalnızca açık endpoint'lerde paylaşır. Sayaç
 **endpoint başına** tutulur: `THROTTLE_LIMIT=100`, "dakikada 100 istek" değil
-"her endpoint için dakikada 100 istek" demektir. `/auth/login`, `/auth/register`
-ve `/auth/refresh` daha sıkı bir limite bağlı. Sayaçlar süreç belleğinde; birden
-fazla replika çalıştırıyorsan her biri kendi sayacını tutar, paylaşımlı sayaç için
+"her endpoint için dakikada 100 istek" demektir. `/auth/login` ve
+`/auth/register` daha sıkı bir limite bağlı; `/auth/refresh` değil, çünkü refresh
+token 256-bit opak bir değer, tahmin edilen bir kimlik değil.
+
+Anahtar `req.ip`'ye dayandığı için `TRUST_PROXY`'yi yanlış bırakmak sessizce
+tehlikeli: reverse proxy arkasında `0` verirsen tüm istemciler proxy'nin IP'sini
+paylaşır ve `/auth/login` **dünya çapında** dakikada 5 istekle sınırlanır.
+
+Sayaçlar süreç belleğinde; birden fazla replika çalıştırıyorsan her biri kendi
+sayacını tutar. Anahtarlar da tahliye edilmiyor, süreç ömrü boyunca birikir —
+uzun ömürlü ve çok istemcili bir servis için paylaşımlı sayaç şart:
 `ThrottlerStorage`'ı implemente eden bir sınıf yazıp `app.module.ts`'teki
 `storage` alanına ver.
 
 Rate limit tek kaynaklı saldırıyı durdurur, binlerce IP'den tek hesaba yapılanı
 durduramaz. Onun için **hesap bazlı sayaç** var: art arda başarısız giriş
 denemelerinden sonra o hesabın girişi kademeli olarak gecikir (1sn, 2sn, 4sn…,
-tavan 5 dk), cevap `Retry-After` taşır ve başarılı girişte sayaç sıfırlanır.
-Kalıcı kilit **yok** — olsaydı saldırgan başkasının hesabını kilitlemek için
-kullanırdı. Kilitliyken sayaç artmaz, böylece bekleme süresi sonsuza uzatılamaz.
+tavan 5 dk) ve cevap `Retry-After` taşır. Sayaç başarılı girişte sıfırlanır, bir
+saat boyunca yeni başarısızlık gelmezse de unutulur — yıllar içinde biriken
+yazım hataları kimseyi cezalandırmaz.
+
+Sınırını bilerek yazıyoruz: bu, hedefli kilitlemeyi **imkânsız kılmaz**. Israrlı
+bir saldırgan tavan süre boyunca bir hesabın girişini kapalı tutabilir; hesabı
+anahtar yapan her tasarımda (ASP.NET Identity, django-axes dahil) durum aynıdır.
+OWASP'ın buna karşı önerdiği çıkış kapısı "kilitliyken şifremi unuttum akışıyla
+giriş" — bu starter'da şifre sıfırlama olmadığı için o kapı da yok. Hesap
+numaralandırmayı da kapatmıyor: kilitli hesap `429`, olmayan hesap `401` döner
+(zaten `POST /auth/register` `409 EMAIL_TAKEN` ile aynı bilgiyi tek istekte
+veriyor).
+
+`429` iki farklı `code` ile gelebilir: rate limit için `TOO_MANY_REQUESTS`,
+hesap gecikmesi için `ACCOUNT_TEMPORARILY_LOCKED`. İstemci ikisini de tanımalı.
 
 **Güvenlik.** helmet, yapılandırılabilir CORS, bağlantı havuzu zaman aşımı ve
 argon2 — kullanıcı bulunamadığında da çalışır, cevap süresi e-postanın kayıtlı
@@ -233,7 +254,10 @@ Bilerek dışarıda; ihtiyaç duyan projede eklenir.
   release candidate gösteriyor; `@latest` ile güncelleme yapma.
 - **`@nestjs/throttler` peer aralığı Nest 12'yi kapsamıyor.** Kurulum ve 429
   davranışı doğrulandı; [#2670](https://github.com/nestjs/throttler/pulls)
-  birleşince güncelle. `app.module.ts`'teki boş `imports: []` de o zaman kalkar.
+  birleşince güncelle. `app.module.ts`'teki boş `imports: []` ayrı bir sebepten:
+  paketin tipleri `@nestjs/common/interfaces`'ten import ediyor, Nest 12 o alt
+  yolu `exports` haritasında açmıyor, çözülemeyen tipin `Pick<>`'i alanı zorunlu
+  yapıyor. Yalnızca tip düzeyinde; silersen derleme kırılır.
 - **`nestjs-cls` peer aralığı Nest 12'yi kapsamıyor.** Kurulum ve çalışma
   doğrulandı, uyarı görmezden geliniyor;
   [#626](https://github.com/Papooch/nestjs-cls/issues/626) kapandığında güncelle.
