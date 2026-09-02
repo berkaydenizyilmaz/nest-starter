@@ -12,6 +12,7 @@ import { Prisma } from '../generated/prisma/client.js';
 import {
   DomainError,
   type ErrorKind,
+  TooManyRequestsError,
   ValidationError,
 } from './domain.error.js';
 import type { ErrorResponse } from './schemas/error-response.schema.js';
@@ -23,6 +24,7 @@ const KIND_TO_STATUS: Record<ErrorKind, HttpStatus> = {
   FORBIDDEN: HttpStatus.FORBIDDEN,
   NOT_FOUND: HttpStatus.NOT_FOUND,
   CONFLICT: HttpStatus.CONFLICT,
+  TOO_MANY_REQUESTS: HttpStatus.TOO_MANY_REQUESTS,
 };
 
 const PRISMA_STATUS: Record<
@@ -90,6 +92,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
           ? exception.issues
           : undefined,
     };
+
+    if (exception instanceof TooManyRequestsError) {
+      response.setHeader('Retry-After', exception.retryAfterSeconds);
+    }
 
     response.status(described.statusCode).json(body);
   }

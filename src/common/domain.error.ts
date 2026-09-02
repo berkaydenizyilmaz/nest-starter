@@ -6,6 +6,7 @@ export const ErrorKind = {
   Forbidden: 'FORBIDDEN',
   NotFound: 'NOT_FOUND',
   Conflict: 'CONFLICT',
+  TooManyRequests: 'TOO_MANY_REQUESTS',
 } as const;
 
 export type ErrorKind = (typeof ErrorKind)[keyof typeof ErrorKind];
@@ -48,4 +49,16 @@ export class NotFoundError extends DomainError {
 
 export class ConflictError extends DomainError {
   readonly kind = ErrorKind.Conflict;
+}
+
+export class TooManyRequestsError extends DomainError {
+  readonly kind = ErrorKind.TooManyRequests;
+
+  constructor(
+    code: string,
+    message: string,
+    readonly retryAfterSeconds: number,
+  ) {
+    super(code, message);
+  }
 }

@@ -4,8 +4,10 @@ import { JwtService } from '@nestjs/jwt';
 import argon2 from 'argon2';
 import {
   ConflictError,
+  TooManyRequestsError,
   UnauthorizedError,
 } from '../../../common/domain.error.js';
+import { MS_PER_SECOND } from '../../../common/constants/time.constants.js';
 import { unusablePasswordHash } from '../../../common/utils/password.util.js';
 import type { Env } from '../../../config/env.schema.js';
 import { PrismaService } from '../../../core/prisma/prisma.service.js';
@@ -16,7 +18,13 @@ import {
   Prisma,
   type User,
 } from '../../../generated/prisma/client.js';
-import { AUTH_AUDIT, AUTH_ERROR } from '../auth.constants.js';
+import {
+  AUTH_AUDIT,
+  AUTH_ERROR,
+  LOGIN_BACKOFF_BASE_MS,
+  LOGIN_BACKOFF_MAX_MS,
+  LOGIN_FAILURE_THRESHOLD,
+} from '../auth.constants.js';
 import type { TokenSubject } from '../auth.types.js';
 import type { LoginRequest } from '../dto/request/login.request.js';
 import type { RegisterRequest } from '../dto/request/register.request.js';
@@ -94,7 +102,20 @@ export class AuthService implements OnModuleInit {
       input.password,
     );
 
+    const lockedFor = user ? remainingLockSeconds(user) : 0;
+    if (lockedFor > 0) {
+      throw new TooManyRequestsError(
+        AUTH_ERROR.ACCOUNT_TEMPORARILY_LOCKED,
+        'Too many failed login attempts',
+        lockedFor,
+      );
+    }
+
     if (!user || !passwordMatches) {
+      if (user) {
+        await this.recordLoginFailure(user);
+      }
+
       await this.audit.record({
         event: AUTH_AUDIT.AUTHN_LOGIN,
         outcome: AuditOutcome.FAILURE,
@@ -115,7 +136,12 @@ export class AuthService implements OnModuleInit {
 
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { lastLoginAt: new Date(), deletedAt: null },
+      data: {
+        lastLoginAt: new Date(),
+        deletedAt: null,
+        failedLoginCount: 0,
+        lockedUntil: null,
+      },
     });
 
     const tokens = await this.issueTokens(user);
@@ -160,6 +186,37 @@ export class AuthService implements OnModuleInit {
     });
   }
 
+  private async recordLoginFailure(user: User): Promise<void> {
+    const failedLoginCount = user.failedLoginCount + 1;
+    const excess = failedLoginCount - LOGIN_FAILURE_THRESHOLD;
+    if (excess <= 0) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { failedLoginCount },
+      });
+      return;
+    }
+
+    const backoffMs = Math.min(
+      LOGIN_BACKOFF_BASE_MS * 2 ** (excess - 1),
+      LOGIN_BACKOFF_MAX_MS,
+    );
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { failedLoginCount, lockedUntil: new Date(Date.now() + backoffMs) },
+    });
+
+    await this.audit.record({
+      event: AUTH_AUDIT.AUTHN_LOGIN_LOCK,
+      outcome: AuditOutcome.FAILURE,
+      actorId: user.id,
+      targetType: AUDIT_TARGET.USER,
+      targetId: user.id,
+      metadata: { reason: 'maxretries', backoffMs },
+    });
+  }
+
   private async issueTokens(
     user: TokenSubject,
   ): Promise<TokenPairResponseInput> {
@@ -183,4 +240,11 @@ export class AuthService implements OnModuleInit {
       },
     );
   }
+}
+
+function remainingLockSeconds(user: { lockedUntil: Date | null }): number {
+  if (!user.lockedUntil) return 0;
+
+  const remainingMs = user.lockedUntil.getTime() - Date.now();
+  return remainingMs > 0 ? Math.ceil(remainingMs / MS_PER_SECOND) : 0;
 }
