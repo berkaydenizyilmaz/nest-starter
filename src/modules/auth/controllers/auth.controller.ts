@@ -4,20 +4,12 @@ import {
   HttpCode,
   HttpStatus,
   Post,
-  Req,
   SerializeOptions,
 } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse } from '@nestjs/swagger';
-import type { Request } from 'express';
 import { ApiErrors } from '../../../common/decorators/api-errors.decorator.js';
 import { Public } from '../../../common/decorators/public.decorator.js';
-import {
-  DEVICE_HEADER,
-  DEVICE_MAX_LENGTH,
-  USER_AGENT_MAX_LENGTH,
-} from '../auth.constants.js';
 import { AuthService } from '../services/auth.service.js';
-import type { SessionContext } from '../auth.types.js';
 import { type LoginDto, loginSchema } from '../dto/request/login.request.js';
 import { type RefreshDto, refreshSchema } from '../dto/request/refresh.request.js';
 import { type RegisterDto, registerSchema } from '../dto/request/register.request.js';
@@ -41,9 +33,8 @@ export class AuthController {
   @ApiErrors(HttpStatus.UNPROCESSABLE_ENTITY, HttpStatus.CONFLICT)
   register(
     @Body({ schema: registerSchema }) dto: RegisterDto,
-    @Req() request: Request,
   ): Promise<TokenPairResponseInput> {
-    return this.auth.register(dto, sessionContext(request));
+    return this.auth.register(dto);
   }
 
   @Public()
@@ -54,9 +45,8 @@ export class AuthController {
   @ApiErrors(HttpStatus.UNPROCESSABLE_ENTITY, HttpStatus.UNAUTHORIZED)
   login(
     @Body({ schema: loginSchema }) dto: LoginDto,
-    @Req() request: Request,
   ): Promise<LoginResponseInput> {
-    return this.auth.login(dto, sessionContext(request));
+    return this.auth.login(dto);
   }
 
   @Public()
@@ -67,9 +57,8 @@ export class AuthController {
   @ApiErrors(HttpStatus.UNPROCESSABLE_ENTITY, HttpStatus.UNAUTHORIZED)
   refresh(
     @Body({ schema: refreshSchema }) dto: RefreshDto,
-    @Req() request: Request,
   ): Promise<TokenPairResponseInput> {
-    return this.auth.refresh(dto.refreshToken, sessionContext(request));
+    return this.auth.refresh(dto.refreshToken);
   }
 
   @Public()
@@ -81,19 +70,3 @@ export class AuthController {
   }
 }
 
-function sessionContext(request: Request): SessionContext {
-  const device = request.headers[DEVICE_HEADER];
-  return {
-    ip: request.ip,
-    userAgent: clamp(request.headers['user-agent'], USER_AGENT_MAX_LENGTH),
-    device: clamp(
-      typeof device === 'string' ? device : undefined,
-      DEVICE_MAX_LENGTH,
-    ),
-  };
-}
-
-function clamp(value: string | undefined, max: number): string | undefined {
-  const trimmed = value?.trim();
-  return trimmed ? trimmed.slice(0, max) : undefined;
-}

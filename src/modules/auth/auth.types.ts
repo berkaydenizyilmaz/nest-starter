@@ -9,8 +9,3 @@ export interface TokenSubject {
   role: string;
 }
 
-export interface SessionContext {
-  ip?: string;
-  userAgent?: string;
-  device?: string;
-}

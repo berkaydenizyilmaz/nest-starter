@@ -6,6 +6,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { ClsService } from 'nestjs-cls';
 import { PinoLogger } from 'nestjs-pino';
 import { Prisma } from '../generated/prisma/client.js';
 import {
@@ -54,13 +55,16 @@ interface Described {
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
-  constructor(private readonly logger: PinoLogger) {
+  constructor(
+    private readonly logger: PinoLogger,
+    private readonly cls: ClsService,
+  ) {
     this.logger.setContext(AllExceptionsFilter.name);
   }
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
-    const request = ctx.getRequest<Request & { id?: unknown }>();
+    const request = ctx.getRequest<Request>();
     const response = ctx.getResponse<Response>();
 
     const described = this.describe(exception);
@@ -80,7 +84,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message: described.message,
       timestamp: new Date().toISOString(),
       path: request.url,
-      requestId: typeof request.id === 'string' ? request.id : undefined,
+      requestId: this.cls.getId(),
       errors:
         exception instanceof ValidationError && exception.issues.length > 0
           ? exception.issues

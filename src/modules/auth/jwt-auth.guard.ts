@@ -6,6 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
+import { ClsService } from 'nestjs-cls';
 import { PinoLogger } from 'nestjs-pino';
 import type { Request } from 'express';
 import type { Env } from '../../config/env.schema.js';
@@ -22,6 +23,7 @@ export class JwtAuthGuard implements CanActivate {
     private readonly reflector: Reflector,
     private readonly logger: PinoLogger,
     private readonly config: ConfigService<Env, true>,
+    private readonly cls: ClsService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -57,11 +59,15 @@ export class JwtAuthGuard implements CanActivate {
 
     this.logger.assign({ userId: payload.sub });
 
-    request.user = {
+    const user: AuthUser = {
       id: payload.sub,
       role: payload.role as AuthUser['role'],
       sessionId: payload.sid,
     };
+
+    request.user = user;
+    this.cls.set('user', user);
+
     return true;
   }
 }

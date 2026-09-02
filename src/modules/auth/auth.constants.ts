@@ -5,10 +5,6 @@ export const REFRESH_TOKEN_BYTES = 32;
 export const ROTATION_GRACE_MS = 30 * 1000;
 export const MAX_ROTATE_ATTEMPTS = 2;
 
-export const DEVICE_HEADER = 'x-device-name';
-export const DEVICE_MAX_LENGTH = 100;
-export const USER_AGENT_MAX_LENGTH = 256;
-
 export const MAX_ACTIVE_SESSIONS = 10;
 
 export const AUTH_ERROR = {

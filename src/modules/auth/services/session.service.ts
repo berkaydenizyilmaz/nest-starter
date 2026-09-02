@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
+import { ClsService } from 'nestjs-cls';
 import { ConfigService } from '@nestjs/config';
 import {
   NotFoundError,
@@ -20,18 +21,17 @@ import {
   REFRESH_TOKEN_BYTES,
   ROTATION_GRACE_MS,
 } from '../auth.constants.js';
-import type { SessionContext } from '../auth.types.js';
 
 @Injectable()
 export class SessionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService<Env, true>,
+    private readonly cls: ClsService,
   ) {}
 
   async issue(
     userId: string,
-    context: SessionContext,
     client: Prisma.TransactionClient = this.prisma,
   ): Promise<{ token: string; sessionId: string }> {
     const token = this.createToken();
@@ -41,9 +41,9 @@ export class SessionService {
         userId,
         tokenHash: hashToken(token),
         expiresAt: this.expiryDate(),
-        ip: context.ip,
-        userAgent: context.userAgent,
-        device: context.device,
+        ip: this.cls.get('ip'),
+        userAgent: this.cls.get('userAgent'),
+        device: this.cls.get('device'),
       },
     });
 
@@ -54,10 +54,9 @@ export class SessionService {
 
   async rotate(
     refreshToken: string,
-    context: SessionContext,
   ): Promise<{ token: string; user: User; sessionId: string }> {
     for (let attempt = 0; attempt < MAX_ROTATE_ATTEMPTS; attempt += 1) {
-      const rotated = await this.tryRotate(refreshToken, context);
+      const rotated = await this.tryRotate(refreshToken);
       if (rotated) return rotated;
     }
 
@@ -126,7 +125,6 @@ export class SessionService {
 
   private async tryRotate(
     refreshToken: string,
-    context: SessionContext,
   ): Promise<{ token: string; user: User; sessionId: string } | null> {
     const hash = hashToken(refreshToken);
     const session = await this.prisma.session.findFirst({
@@ -176,9 +174,9 @@ export class SessionService {
         previousHash: session.tokenHash,
         rotatedAt: now,
         lastUsedAt: now,
-        ip: context.ip ?? session.ip,
-        userAgent: context.userAgent ?? session.userAgent,
-        device: context.device ?? session.device,
+        ip: this.cls.get('ip') ?? session.ip,
+        userAgent: this.cls.get('userAgent') ?? session.userAgent,
+        device: this.cls.get('device') ?? session.device,
       },
     });
 

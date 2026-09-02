@@ -11,7 +11,7 @@ import type { Env } from '../../../config/env.schema.js';
 import { PrismaService } from '../../../core/prisma/prisma.service.js';
 import { Prisma, type User } from '../../../generated/prisma/client.js';
 import { AUTH_ERROR } from '../auth.constants.js';
-import type { SessionContext, TokenSubject } from '../auth.types.js';
+import type { TokenSubject } from '../auth.types.js';
 import type { LoginDto } from '../dto/request/login.request.js';
 import type { RegisterDto } from '../dto/request/register.request.js';
 import type { LoginResponseInput } from '../dto/response/login.response.js';
@@ -35,10 +35,7 @@ export class AuthService implements OnModuleInit {
     );
   }
 
-  async register(
-    input: RegisterDto,
-    context: SessionContext,
-  ): Promise<TokenPairResponseInput> {
+  async register(input: RegisterDto): Promise<TokenPairResponseInput> {
     const passwordHash = await argon2.hash(input.password);
 
     const { user, issued } = await this.prisma.$transaction(async (tx) => {
@@ -62,7 +59,7 @@ export class AuthService implements OnModuleInit {
 
       return {
         user: created,
-        issued: await this.sessions.issue(created.id, context, tx),
+        issued: await this.sessions.issue(created.id, tx),
       };
     });
 
@@ -72,10 +69,7 @@ export class AuthService implements OnModuleInit {
     };
   }
 
-  async login(
-    input: LoginDto,
-    context: SessionContext,
-  ): Promise<LoginResponseInput> {
+  async login(input: LoginDto): Promise<LoginResponseInput> {
     const user = await this.prisma.user.findUnique({
       where: { email: input.email },
     });
@@ -99,16 +93,13 @@ export class AuthService implements OnModuleInit {
       data: { lastLoginAt: new Date(), deletedAt: null },
     });
 
-    const tokens = await this.issueTokens(user, context);
+    const tokens = await this.issueTokens(user);
 
     return reactivated ? { ...tokens, reactivated: true } : tokens;
   }
 
-  async refresh(
-    refreshToken: string,
-    context: SessionContext,
-  ): Promise<TokenPairResponseInput> {
-    const rotated = await this.sessions.rotate(refreshToken, context);
+  async refresh(refreshToken: string): Promise<TokenPairResponseInput> {
+    const rotated = await this.sessions.rotate(refreshToken);
 
     return {
       accessToken: await this.signAccessToken(rotated.user, rotated.sessionId),
@@ -122,9 +113,8 @@ export class AuthService implements OnModuleInit {
 
   private async issueTokens(
     user: TokenSubject,
-    context: SessionContext,
   ): Promise<TokenPairResponseInput> {
-    const issued = await this.sessions.issue(user.id, context);
+    const issued = await this.sessions.issue(user.id);
 
     return {
       accessToken: await this.signAccessToken(user, issued.sessionId),
