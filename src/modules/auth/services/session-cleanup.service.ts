@@ -34,18 +34,22 @@ export class SessionCleanupService {
     });
     const threshold = new Date(Date.now() - retentionDays * MS_PER_DAY);
 
-    const { count } = await this.prisma.session.deleteMany({
-      where: {
-        OR: [
-          { expiresAt: { lt: threshold } },
-          { revokedAt: { lt: threshold } },
-        ],
-      },
-    });
+    try {
+      const { count } = await this.prisma.session.deleteMany({
+        where: {
+          OR: [
+            { expiresAt: { lt: threshold } },
+            { revokedAt: { lt: threshold } },
+          ],
+        },
+      });
 
-    const durationMs = Math.round(performance.now() - startedAt);
-    this.logger.info(
-      `Session cleanup done | deleted=${count} duration=${durationMs}ms`,
-    );
+      const durationMs = Math.round(performance.now() - startedAt);
+      this.logger.info(
+        `Session cleanup done | deleted=${count} duration=${durationMs}ms`,
+      );
+    } catch (error) {
+      this.logger.error({ err: error }, 'Session cleanup failed');
+    }
   }
 }

@@ -15,6 +15,8 @@ import {
 } from '../../../common/constants/time.constants.js';
 import type { Env } from '../../../config/env.schema.js';
 
+const ANONYMIZATION_BATCH_SIZE = 500;
+
 @Injectable()
 export class UserAnonymizationService {
   constructor(
@@ -44,15 +46,31 @@ export class UserAnonymizationService {
     });
     const threshold = new Date(Date.now() - retentionDays * MS_PER_DAY);
 
+    try {
+      const { processed, total } = await this.anonymizeDue(threshold);
+
+      const durationMs = Math.round(performance.now() - startedAt);
+      this.logger.info(
+        `User anonymization done | processed=${processed}/${total} duration=${durationMs}ms`,
+      );
+    } catch (error) {
+      this.logger.error({ err: error }, 'User anonymization failed');
+    }
+  }
+
+  private async anonymizeDue(
+    threshold: Date,
+  ): Promise<{ processed: number; total: number }> {
     const users = await this.prisma.user.findMany({
       where: {
         deletedAt: { lt: threshold },
         anonymizedAt: null,
       },
       select: { id: true },
+      take: ANONYMIZATION_BATCH_SIZE,
     });
 
-    let successCount = 0;
+    let processed = 0;
 
     for (const { id } of users) {
       try {
@@ -70,15 +88,12 @@ export class UserAnonymizationService {
             tx,
           );
         });
-        successCount++;
+        processed++;
       } catch (error) {
         this.logger.error({ err: error }, `Failed to anonymize user ${id}`);
       }
     }
 
-    const durationMs = Math.round(performance.now() - startedAt);
-    this.logger.info(
-      `User anonymization done | processed=${successCount}/${users.length} duration=${durationMs}ms`,
-    );
+    return { processed, total: users.length };
   }
 }

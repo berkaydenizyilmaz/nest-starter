@@ -34,13 +34,17 @@ export class AuditLogCleanupService {
     });
     const threshold = new Date(Date.now() - retentionDays * MS_PER_DAY);
 
-    const { count } = await this.prisma.auditLog.deleteMany({
-      where: { createdAt: { lt: threshold } },
-    });
+    try {
+      const { count } = await this.prisma.auditLog.deleteMany({
+        where: { createdAt: { lt: threshold } },
+      });
 
-    const durationMs = Math.round(performance.now() - startedAt);
-    this.logger.info(
-      `Audit log cleanup done | deleted=${count} duration=${durationMs}ms`,
-    );
+      const durationMs = Math.round(performance.now() - startedAt);
+      this.logger.info(
+        `Audit log cleanup done | deleted=${count} duration=${durationMs}ms`,
+      );
+    } catch (error) {
+      this.logger.error({ err: error }, 'Audit log cleanup failed');
+    }
   }
 }
