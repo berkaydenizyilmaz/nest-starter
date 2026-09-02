@@ -57,7 +57,7 @@ OpenAPI: `/api/docs` (yalnızca `NODE_ENV !== production`).
 | `TRUST_PROXY` | hayır | `0` | Güvenilen proxy hop sayısı |
 | `CORS_ORIGINS` | hayır | boş | Virgülle ayrılmış; boşsa CORS kapalı |
 | `LOG_LEVEL` | hayır | `info` | `error` · `warn` · `info` · `debug` |
-| `CRON_CLEANUP_ENABLED` | hayır | `true` | Oturum temizleme cron'u |
+| `CRON_ENABLED` | hayır | `true` | Zamanlanmış işler çalışsın mı |
 | `SESSION_CLEANUP_RETENTION_DAYS` | hayır | `7` | Ölü oturumların saklanma süresi (gün) |
 | `AUDIT_RETENTION_DAYS` | hayır | `730` | Audit kayıtlarının saklanma süresi (gün) |
 

@@ -28,6 +28,10 @@ export class UserAnonymizationService {
     timeZone: APP_TIMEZONE,
   })
   async handleCron(): Promise<void> {
+    if (!this.config.get('CRON_ENABLED', { infer: true })) {
+      return;
+    }
+
     const startedAt = performance.now();
     const retentionDays = this.config.get('USER_ANONYMIZATION_AFTER_DAYS', {
       infer: true,

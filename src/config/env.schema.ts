@@ -17,7 +17,7 @@ export const envSchema = z.object({
   CORS_ORIGINS: z.string().default(''),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
 
-  CRON_CLEANUP_ENABLED: z
+  CRON_ENABLED: z
     .enum(['true', 'false'])
     .default('true')
     .transform((val) => val === 'true'),

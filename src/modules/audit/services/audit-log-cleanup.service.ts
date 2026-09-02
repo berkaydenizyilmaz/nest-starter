@@ -22,7 +22,7 @@ export class AuditLogCleanupService {
     timeZone: APP_TIMEZONE,
   })
   async handleCron(): Promise<void> {
-    if (!this.config.get('CRON_CLEANUP_ENABLED', { infer: true })) {
+    if (!this.config.get('CRON_ENABLED', { infer: true })) {
       return;
     }
 
