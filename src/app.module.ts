@@ -9,6 +9,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { toValidationError } from './common/utils/validation.util.js';
+import { AuditModule } from './modules/audit/audit.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { envSchema } from './config/env.schema.js';
 import { HealthModule } from './modules/health/health.module.js';
@@ -30,6 +31,7 @@ import { RolesGuard } from './common/roles.guard.js';
     RequestContextModule,
     LoggerModule,
     PrismaModule,
+    AuditModule,
     AuthModule,
     UserModule,
     HealthModule,

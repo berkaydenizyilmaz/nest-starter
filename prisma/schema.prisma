@@ -49,3 +49,29 @@ model Session {
   @@index([expiresAt])
   @@index([revokedAt])
 }
+
+enum AuditOutcome {
+  SUCCESS
+  FAILURE
+}
+
+model AuditLog {
+  id      String       @id @default(uuid())
+  event   String
+  outcome AuditOutcome @default(SUCCESS)
+
+  actorId    String?
+  targetType String?
+  targetId   String?
+
+  metadata  Json?
+  ip        String?
+  userAgent String?
+  requestId String?
+
+  createdAt DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([targetType, targetId, createdAt])
+  @@index([event, outcome, createdAt])
+}

@@ -15,7 +15,7 @@ pnpm install                      # postinstall Prisma client'ı üretir
 cp .env.example .env
 openssl rand -base64 48          # JWT_ACCESS_SECRET'a yaz
 
-pnpm dlx prisma migrate dev --name init
+pnpm exec prisma migrate dev --name init
 pnpm start:dev
 ```
 
@@ -78,8 +78,8 @@ hop sayısına eşit olmalı.
 | `pnpm build` | Derleme |
 | `pnpm lint` | oxlint |
 | `pnpm test` | Vitest |
-| `pnpm dlx prisma migrate dev --name <ad>` | Şema değişikliği |
-| `pnpm dlx prisma studio` | Veritabanı arayüzü |
+| `pnpm exec prisma migrate dev --name <ad>` | Şema değişikliği |
+| `pnpm exec prisma studio` | Veritabanı arayüzü |
 
 ## Yapı
 
