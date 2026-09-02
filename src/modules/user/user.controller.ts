@@ -4,18 +4,31 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Query,
   SerializeOptions,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse } from '@nestjs/swagger';
 import { ApiErrors } from '../../common/decorators/api-errors.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import {
+  type CursorQuery,
+  cursorQuerySchema,
+} from '../../common/schemas/pagination.schema.js';
+import { AuditLogService } from '../audit/audit-log.service.js';
+import {
+  type SecurityLogPageInput,
+  securityLogPageSchema,
+} from '../audit/dto/security-log.response.js';
 import { type MeResponseInput, meResponseSchema } from './dto/me.response.js';
 import { UserService } from './user.service.js';
 
 @ApiBearerAuth()
 @Controller({ path: 'users', version: '1' })
 export class UserController {
-  constructor(private readonly users: UserService) {}
+  constructor(
+    private readonly users: UserService,
+    private readonly audit: AuditLogService,
+  ) {}
 
   @Get('me')
   @SerializeOptions({ schema: meResponseSchema })
@@ -23,6 +36,17 @@ export class UserController {
   @ApiErrors(HttpStatus.UNAUTHORIZED, HttpStatus.NOT_FOUND)
   getMe(@CurrentUser('id') userId: string): Promise<MeResponseInput> {
     return this.users.findById(userId);
+  }
+
+  @Get('me/security-log')
+  @SerializeOptions({ schema: securityLogPageSchema })
+  @ApiOkResponse({ standardSchema: securityLogPageSchema })
+  @ApiErrors(HttpStatus.UNPROCESSABLE_ENTITY, HttpStatus.UNAUTHORIZED)
+  getMySecurityLog(
+    @CurrentUser('id') userId: string,
+    @Query({ schema: cursorQuerySchema }) query: CursorQuery,
+  ): Promise<SecurityLogPageInput> {
+    return this.audit.listForActor(userId, query);
   }
 
   @Delete('me')
