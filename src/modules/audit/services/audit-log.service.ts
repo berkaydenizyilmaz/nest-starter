@@ -5,7 +5,7 @@ import {
   buildOffsetPage,
 } from '../../../common/utils/pagination.util.js';
 import type { CursorQuery } from '../../../common/schemas/pagination.schema.js';
-import type { AuditLog, Prisma } from '../../../generated/prisma/client.js';
+import { Prisma } from '../../../generated/prisma/client.js';
 import type { AuditLogQueryDto } from '../dto/audit-log-query.request.js';
 import type { AuditLogPageInput } from '../dto/audit-log.response.js';
 import type { SecurityLogPageInput } from '../dto/security-log.response.js';
@@ -44,6 +44,16 @@ export class AuditLogService {
     });
 
     return buildCursorPage(rows, query.limit, (row) => row.id);
+  }
+
+  async anonymize(
+    actorId: string,
+    client: Prisma.TransactionClient,
+  ): Promise<void> {
+    await client.auditLog.updateMany({
+      where: { actorId },
+      data: { ip: null, userAgent: null, metadata: Prisma.DbNull },
+    });
   }
 
   private buildWhere(query: AuditLogQueryDto): Prisma.AuditLogWhereInput {

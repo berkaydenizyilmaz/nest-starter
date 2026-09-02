@@ -124,6 +124,16 @@ export class SessionService {
     );
   }
 
+  async anonymize(
+    userId: string,
+    client: Prisma.TransactionClient,
+  ): Promise<void> {
+    await client.session.updateMany({
+      where: { userId },
+      data: { ip: null, userAgent: null, device: null },
+    });
+  }
+
   async listActive(userId: string): Promise<Session[]> {
     return this.prisma.session.findMany({
       where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },

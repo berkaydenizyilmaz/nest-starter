@@ -1,4 +1,3 @@
-import { randomBytes } from 'node:crypto';
 import { Injectable, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -7,6 +6,7 @@ import {
   ConflictError,
   UnauthorizedError,
 } from '../../../common/domain.error.js';
+import { unusablePasswordHash } from '../../../common/utils/password.util.js';
 import type { Env } from '../../../config/env.schema.js';
 import { PrismaService } from '../../../core/prisma/prisma.service.js';
 import { AUDIT_TARGET } from '../../../common/constants/audit.constants.js';
@@ -37,9 +37,7 @@ export class AuthService implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
-    this.dummyPasswordHash = await argon2.hash(
-      randomBytes(32).toString('base64url'),
-    );
+    this.dummyPasswordHash = await unusablePasswordHash();
   }
 
   async register(input: RegisterDto): Promise<TokenPairResponseInput> {

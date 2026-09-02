@@ -20,11 +20,14 @@ model User {
 
   lastLoginAt DateTime?
 
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  deletedAt    DateTime?
+  anonymizedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   sessions Session[]
+
+  @@index([anonymizedAt, deletedAt])
 }
 
 model Session {
