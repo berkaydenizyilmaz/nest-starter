@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { PinoLogger } from 'nestjs-pino';
 import { PrismaService } from '../../../core/prisma/prisma.service.js';
 import {
   APP_TIMEZONE,
@@ -10,12 +11,13 @@ import type { Env } from '../../../config/env.schema.js';
 
 @Injectable()
 export class AuditLogCleanupService {
-  private readonly logger = new Logger(AuditLogCleanupService.name);
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService<Env, true>,
-  ) {}
+    private readonly logger: PinoLogger,
+  ) {
+    this.logger.setContext(AuditLogCleanupService.name);
+  }
 
   @Cron(CronExpression.EVERY_DAY_AT_4AM, {
     name: 'audit-log-cleanup',
@@ -37,7 +39,7 @@ export class AuditLogCleanupService {
     });
 
     const durationMs = Math.round(performance.now() - startedAt);
-    this.logger.log(
+    this.logger.info(
       `Audit log cleanup done | deleted=${count} duration=${durationMs}ms`,
     );
   }

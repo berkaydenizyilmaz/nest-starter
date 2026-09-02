@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { PinoLogger } from 'nestjs-pino';
 import { PrismaService } from '../../../core/prisma/prisma.service.js';
 import { UserService } from './user.service.js';
 import { SessionService } from '../../auth/services/session.service.js';
@@ -16,8 +17,6 @@ import type { Env } from '../../../config/env.schema.js';
 
 @Injectable()
 export class UserAnonymizationService {
-  private readonly logger = new Logger(UserAnonymizationService.name);
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService<Env, true>,
@@ -25,7 +24,10 @@ export class UserAnonymizationService {
     private readonly sessions: SessionService,
     private readonly auditLogs: AuditLogService,
     private readonly audit: AuditService,
-  ) {}
+    private readonly logger: PinoLogger,
+  ) {
+    this.logger.setContext(UserAnonymizationService.name);
+  }
 
   @Cron(CronExpression.EVERY_DAY_AT_5AM, {
     name: 'user-anonymization',
@@ -70,15 +72,12 @@ export class UserAnonymizationService {
         });
         successCount++;
       } catch (error) {
-        this.logger.error(
-          `Failed to anonymize user ${id}`,
-          error instanceof Error ? error.stack : String(error),
-        );
+        this.logger.error({ err: error }, `Failed to anonymize user ${id}`);
       }
     }
 
     const durationMs = Math.round(performance.now() - startedAt);
-    this.logger.log(
+    this.logger.info(
       `User anonymization done | processed=${successCount}/${users.length} duration=${durationMs}ms`,
     );
   }
