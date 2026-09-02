@@ -114,8 +114,8 @@ spec içinde benzersiz olmalı. Fiil + kaynak yaz (`listSessions`, `revokeSessio
 
 - Her endpoint varsayılan olarak korumalı; açmak için `@Public()`, yetkilendirme
   `@Roles(Role.<ROLE>)`.
-- Guard sırası önemli: `JwtAuthGuard` `request.user`'ı yazar, `RolesGuard` okur —
-  sırayı `app.module.ts` belirler.
+- Guard sırası önemli: `JwtAuthGuard` `request.user`'ı yazar, `RateLimitGuard`
+  onu anahtar yapar, `RolesGuard` okur — sırayı `app.module.ts` belirler.
 - Kullanıcı kimliği `@CurrentUser()` ile alınır, istek gövdesinden asla.
 
 ## Denetim ve anonimleştirme
@@ -140,6 +140,8 @@ spec içinde benzersiz olmalı. Fiil + kaynak yaz (`listSessions`, `revokeSessio
   OpenAPI 3.0 ise adsız parametrede `$ref` kabul etmez — swagger parametrelerin
   hepsini **sessizce düşürür** ve istemci filtreleri hiç görmez. Cevapta zorunlu,
   gövdede serbest, adlı parametrede de sorunsuz.
+- **`ThrottlerModule.forRoot([...])` dizi formunu kullanma.** `storage` alanı
+  yalnızca nesne formunda var; dizi verirsen sessizce yok sayılır.
 - **Codec (`z.codec`) kullanma.** Serializer decode yönünü çalıştırır, cevap için
   yanlış yön.
 - **`deletedAt: null` filtresini unutma.** Her sorguya elle yazılır;

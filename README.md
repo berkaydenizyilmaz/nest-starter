@@ -24,21 +24,21 @@ gerekir. Tek numaralı hatlar (23.x, 25.x) desteklenmiyor.
 
 ## Endpoint'ler
 
-| Method | Yol | Erişim |
-|---|---|---|
-| `POST` | `/api/v1/auth/register` | — |
-| `POST` | `/api/v1/auth/login` | — |
-| `POST` | `/api/v1/auth/refresh` | — |
-| `POST` | `/api/v1/auth/logout` | — |
-| `GET` | `/api/v1/auth/sessions` | bearer |
-| `DELETE` | `/api/v1/auth/sessions/:id` | bearer |
-| `DELETE` | `/api/v1/auth/sessions` | bearer |
-| `GET` | `/api/v1/users/me` | bearer |
-| `GET` | `/api/v1/users/me/security-log` | bearer |
-| `DELETE` | `/api/v1/users/me` | bearer |
-| `GET` | `/api/v1/admin/audit-logs` | admin |
-| `GET` | `/api/health/live` | — |
-| `GET` | `/api/health/ready` | — |
+| Method   | Yol                             | Erişim |
+| -------- | ------------------------------- | ------ |
+| `POST`   | `/api/v1/auth/register`         | —      |
+| `POST`   | `/api/v1/auth/login`            | —      |
+| `POST`   | `/api/v1/auth/refresh`          | —      |
+| `POST`   | `/api/v1/auth/logout`           | —      |
+| `GET`    | `/api/v1/auth/sessions`         | bearer |
+| `DELETE` | `/api/v1/auth/sessions/:id`     | bearer |
+| `DELETE` | `/api/v1/auth/sessions`         | bearer |
+| `GET`    | `/api/v1/users/me`              | bearer |
+| `GET`    | `/api/v1/users/me/security-log` | bearer |
+| `DELETE` | `/api/v1/users/me`              | bearer |
+| `GET`    | `/api/v1/admin/audit-logs`      | admin  |
+| `GET`    | `/api/health/live`              | —      |
+| `GET`    | `/api/health/ready`             | —      |
 
 OpenAPI: `/api/docs` (yalnızca `NODE_ENV !== production`).
 
@@ -47,25 +47,25 @@ OpenAPI: `/api/docs` (yalnızca `NODE_ENV !== production`).
 Şema `src/config/env.schema.ts`. Eksik veya geçersiz bir değişkende uygulama
 **açılmaz** ve sorunlu olanları listeler.
 
-| Değişken | Zorunlu | Varsayılan | Not |
-|---|---|---|---|
-| `DATABASE_URL` | **evet** | — | PostgreSQL bağlantı adresi |
-| `JWT_ACCESS_SECRET` | **evet** | — | En az 32 karakter |
-| `NODE_ENV` | hayır | `development` | `production`'da Swagger kapanır |
-| `PORT` | hayır | `3000` | |
-| `DATABASE_POOL_MAX` | hayır | `10` | Havuzdaki azami bağlantı |
-| `JWT_ACCESS_TTL` | hayır | `15m` | Access token ömrü |
-| `REFRESH_TTL_DAYS` | hayır | `7` | Oturum ömrü (gün) |
-| `TRUST_PROXY` | hayır | `0` | Güvenilen proxy hop sayısı |
-| `CORS_ORIGINS` | hayır | boş | Virgülle ayrılmış; boşsa CORS kapalı |
-| `LOG_LEVEL` | hayır | `info` | `error` · `warn` · `info` · `debug` |
-| `THROTTLE_ENABLED` | hayır | `true` | İstek limiti uygulansın mı |
-| `THROTTLE_TTL` | hayır | `60` | Limit penceresi (saniye) |
-| `THROTTLE_LIMIT` | hayır | `100` | Pencere başına istek |
-| `CRON_ENABLED` | hayır | `true` | Zamanlanmış işler bu instance'ta koşsun mu |
-| `SESSION_CLEANUP_RETENTION_DAYS` | hayır | `7` | Ölü oturumların saklanma süresi (gün) |
-| `USER_ANONYMIZATION_AFTER_DAYS` | hayır | `14` | Silinen hesabın geri alma süresi (gün) |
-| `AUDIT_RETENTION_DAYS` | hayır | `730` | Denetim kayıtlarının saklanma süresi (gün) |
+| Değişken                         | Zorunlu  | Varsayılan    | Not                                        |
+| -------------------------------- | -------- | ------------- | ------------------------------------------ |
+| `DATABASE_URL`                   | **evet** | —             | PostgreSQL bağlantı adresi                 |
+| `JWT_ACCESS_SECRET`              | **evet** | —             | En az 32 karakter                          |
+| `NODE_ENV`                       | hayır    | `development` | `production`'da Swagger kapanır            |
+| `PORT`                           | hayır    | `3000`        |                                            |
+| `DATABASE_POOL_MAX`              | hayır    | `10`          | Havuzdaki azami bağlantı                   |
+| `JWT_ACCESS_TTL`                 | hayır    | `15m`         | Access token ömrü                          |
+| `REFRESH_TTL_DAYS`               | hayır    | `7`           | Oturum ömrü (gün)                          |
+| `TRUST_PROXY`                    | hayır    | `0`           | Güvenilen proxy hop sayısı                 |
+| `CORS_ORIGINS`                   | hayır    | boş           | Virgülle ayrılmış; boşsa CORS kapalı       |
+| `LOG_LEVEL`                      | hayır    | `info`        | `error` · `warn` · `info` · `debug`        |
+| `THROTTLE_ENABLED`               | hayır    | `true`        | İstek limiti uygulansın mı                 |
+| `THROTTLE_TTL`                   | hayır    | `60`          | Limit penceresi (saniye)                   |
+| `THROTTLE_LIMIT`                 | hayır    | `100`         | Pencere başına istek                       |
+| `CRON_ENABLED`                   | hayır    | `true`        | Zamanlanmış işler bu instance'ta koşsun mu |
+| `SESSION_CLEANUP_RETENTION_DAYS` | hayır    | `7`           | Ölü oturumların saklanma süresi (gün)      |
+| `USER_ANONYMIZATION_AFTER_DAYS`  | hayır    | `14`          | Silinen hesabın geri alma süresi (gün)     |
+| `AUDIT_RETENTION_DAYS`           | hayır    | `730`         | Denetim kayıtlarının saklanma süresi (gün) |
 
 `TRUST_PROXY`'ye **asla `true` verme.** Reverse proxy arkasındaysan zincirdeki
 hop sayısını yaz (genelde `1`). `true` ile istemci `X-Forwarded-For` göndererek
@@ -77,14 +77,14 @@ sayısı ve bu, veritabanının `max_connections` değerini aşmamalı.
 
 ## Komutlar
 
-| Komut | |
-|---|---|
-| `pnpm start:dev` | Geliştirme (watch) |
-| `pnpm build` | Derleme |
-| `pnpm lint` | oxlint (type-aware) |
-| `pnpm test` | Vitest |
-| `pnpm exec prisma migrate dev --name <ad>` | Şema değişikliği |
-| `pnpm exec prisma studio` | Veritabanı arayüzü |
+| Komut                                      |                     |
+| ------------------------------------------ | ------------------- |
+| `pnpm start:dev`                           | Geliştirme (watch)  |
+| `pnpm build`                               | Derleme             |
+| `pnpm lint`                                | oxlint (type-aware) |
+| `pnpm test`                                | Vitest              |
+| `pnpm exec prisma migrate dev --name <ad>` | Şema değişikliği    |
+| `pnpm exec prisma studio`                  | Veritabanı arayüzü  |
 
 Prisma komutlarında `pnpm exec` kullan, `pnpm dlx` **değil** — `dlx` sabitlenmiş
 sürümü değil `latest` etiketini indirir.
@@ -180,16 +180,34 @@ seviye. Token ve cookie redact ediliyor.
 10 saniyede tamamlanmazsa süreç hata loglayıp kendi çıkıyor, böylece takılan bir
 kapanış platformun `SIGKILL`'ini beklemiyor.
 
+**Kötüye kullanım koruması.** İki ayrı kontrol var, çünkü farklı saldırıları
+durduruyorlar. **Rate limit** doğrulanmış isteği kullanıcıya, doğrulanmamışı IP'ye
+göre sayar — tek NAT arkasındaki kullanıcılar birbirinin kotasını yemez. Sayaç
+**endpoint başına** tutulur: `THROTTLE_LIMIT=100`, "dakikada 100 istek" değil
+"her endpoint için dakikada 100 istek" demektir. `/auth/login`, `/auth/register`
+ve `/auth/refresh` daha sıkı bir limite bağlı. Sayaçlar süreç belleğinde; birden
+fazla replika çalıştırıyorsan her biri kendi sayacını tutar, paylaşımlı sayaç için
+`ThrottlerStorage`'ı implemente eden bir sınıf yazıp `app.module.ts`'teki
+`storage` alanına ver.
+
+Rate limit tek kaynaklı saldırıyı durdurur, binlerce IP'den tek hesaba yapılanı
+durduramaz. Onun için **hesap bazlı sayaç** var: art arda başarısız giriş
+denemelerinden sonra o hesabın girişi kademeli olarak gecikir (1sn, 2sn, 4sn…,
+tavan 5 dk), cevap `Retry-After` taşır ve başarılı girişte sayaç sıfırlanır.
+Kalıcı kilit **yok** — olsaydı saldırgan başkasının hesabını kilitlemek için
+kullanırdı. Kilitliyken sayaç artmaz, böylece bekleme süresi sonsuza uzatılamaz.
+
 **Güvenlik.** helmet, yapılandırılabilir CORS, bağlantı havuzu zaman aşımı ve
 argon2 — kullanıcı bulunamadığında da çalışır, cevap süresi e-postanın kayıtlı
-olduğunu sızdırmaz.
+olduğunu sızdırmaz. Hesap kilidi de şifre doğrulamasından sonra değerlendirilir,
+aynı sebeple.
 
 ## Zamanlanmış işler
 
-| İş | Saat | Ne yapıyor |
-|---|---|---|
-| `session-cleanup` | 03:00 | Süresi dolmuş ve iptal edilmiş oturumları siler |
-| `audit-log-cleanup` | 04:00 | Saklama süresi dolan denetim kayıtlarını siler |
+| İş                   | Saat  | Ne yapıyor                                               |
+| -------------------- | ----- | -------------------------------------------------------- |
+| `session-cleanup`    | 03:00 | Süresi dolmuş ve iptal edilmiş oturumları siler          |
+| `audit-log-cleanup`  | 04:00 | Saklama süresi dolan denetim kayıtlarını siler           |
 | `user-anonymization` | 05:00 | Geri alma süresi dolan silinmiş hesapları anonimleştirir |
 
 Saat dilimi `common/constants/time.constants.ts`'te (`Europe/Istanbul`). Üçü de
@@ -200,9 +218,10 @@ birinde açık bırak, yoksa hepsi aynı işi koşar.
 
 Bilerek dışarıda; ihtiyaç duyan projede eklenir.
 
-- **Rate limiting** — `@nestjs/throttler` henüz Nest 12'yi desteklemiyor.
-  Eklerken sayacı yalnızca IP'ye bağlama: dağıtılmış saldırıda etkisiz kalır ve
-  BFF arkasında tüm web trafiği tek IP'den gelir. IP + hesap çift anahtarlı kur.
+- **Hacimsel saldırı koruması** — uygulama içi rate limit süreci doyuran bir
+  seli durduramaz; o kenar katmanın işi (nginx `limit_req`, Cloudflare).
+- **CAPTCHA / MFA** — OWASP bunları kaba kuvvete karşı ek katman sayıyor ama
+  ikisi de dış servis bağımlılığı ister.
 - **Şifre değiştirme, şifre sıfırlama, e-posta doğrulama** — mail altyapısı ister
 - **Profil güncelleme, kullanıcı listeleme** gibi CRUD endpoint'leri
 - Cache, file upload, i18n, Docker, Redis
@@ -212,6 +231,9 @@ Bilerek dışarıda; ihtiyaç duyan projede eklenir.
 - **ESM projesi.** Relative import'lar `.js` uzantılı olmalı.
 - **Prisma sürümü sabit** (`7.10.0`). `prisma` paketinin `latest` etiketi bir
   release candidate gösteriyor; `@latest` ile güncelleme yapma.
+- **`@nestjs/throttler` peer aralığı Nest 12'yi kapsamıyor.** Kurulum ve 429
+  davranışı doğrulandı; [#2670](https://github.com/nestjs/throttler/pulls)
+  birleşince güncelle. `app.module.ts`'teki boş `imports: []` de o zaman kalkar.
 - **`nestjs-cls` peer aralığı Nest 12'yi kapsamıyor.** Kurulum ve çalışma
   doğrulandı, uyarı görmezden geliniyor;
   [#626](https://github.com/Papooch/nestjs-cls/issues/626) kapandığında güncelle.
