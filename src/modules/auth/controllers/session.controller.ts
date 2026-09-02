@@ -29,7 +29,7 @@ export class SessionController {
   @SerializeOptions({ schema: sessionResponseSchema })
   @ApiOkResponse({ standardSchema: sessionListSchema })
   @ApiErrors(HttpStatus.UNAUTHORIZED)
-  async list(@CurrentUser() user: AuthUser): Promise<SessionListInput> {
+  async listSessions(@CurrentUser() user: AuthUser): Promise<SessionListInput> {
     const sessions = await this.sessions.findAllActive(user.id);
     return sessions.map((session) =>
       toSessionResponse(session, user.sessionId),
@@ -43,7 +43,7 @@ export class SessionController {
     HttpStatus.UNAUTHORIZED,
     HttpStatus.NOT_FOUND,
   )
-  revoke(
+  revokeSession(
     @Param('id', { schema: z.uuid() }) id: string,
     @CurrentUser('id') userId: string,
   ): Promise<void> {
@@ -53,7 +53,7 @@ export class SessionController {
   @Delete()
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiErrors(HttpStatus.UNAUTHORIZED)
-  revokeAll(@CurrentUser('id') userId: string): Promise<void> {
+  revokeAllSessions(@CurrentUser('id') userId: string): Promise<void> {
     return this.sessions.revokeAll(userId);
   }
 }

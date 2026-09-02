@@ -23,14 +23,14 @@ export class HealthController {
 
   @Get('live')
   @ApiOkResponse({ standardSchema: livenessSchema })
-  live(): LivenessInput {
+  getLiveness(): LivenessInput {
     return { status: 'ok', uptime: this.health.uptimeSeconds() };
   }
 
   @Get('ready')
   @ApiOkResponse({ standardSchema: readinessSchema })
   @ApiServiceUnavailableResponse({ standardSchema: readinessSchema })
-  async ready(
+  async getReadiness(
     @Res({ passthrough: true }) response: Response,
   ): Promise<ReadinessInput> {
     const database = await this.health.checkDatabase();
