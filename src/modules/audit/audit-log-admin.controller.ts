@@ -1,4 +1,10 @@
-import { Controller, Get, HttpStatus, Query, SerializeOptions } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpStatus,
+  Query,
+  SerializeOptions,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse } from '@nestjs/swagger';
 import { ApiErrors } from '../../common/decorators/api-errors.decorator.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';

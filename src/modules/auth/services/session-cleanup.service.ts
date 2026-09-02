@@ -34,7 +34,10 @@ export class SessionCleanupService {
 
     const { count } = await this.prisma.session.deleteMany({
       where: {
-        OR: [{ expiresAt: { lt: threshold } }, { revokedAt: { lt: threshold } }],
+        OR: [
+          { expiresAt: { lt: threshold } },
+          { revokedAt: { lt: threshold } },
+        ],
       },
     });
 

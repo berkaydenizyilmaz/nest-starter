@@ -16,7 +16,9 @@ export const securityLogEntrySchema = z
   })
   .meta({ id: 'SecurityLogEntry' });
 
-export const securityLogPageSchema = cursorPageSchema(securityLogEntrySchema).meta({
+export const securityLogPageSchema = cursorPageSchema(
+  securityLogEntrySchema,
+).meta({
   id: 'SecurityLogPage',
 });
 

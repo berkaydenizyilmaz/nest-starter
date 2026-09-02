@@ -8,4 +8,3 @@ export interface TokenSubject {
   id: string;
   role: string;
 }
-

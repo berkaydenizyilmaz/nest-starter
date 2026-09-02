@@ -11,8 +11,14 @@ import { ApiErrors } from '../../../common/decorators/api-errors.decorator.js';
 import { Public } from '../../../common/decorators/public.decorator.js';
 import { AuthService } from '../services/auth.service.js';
 import { type LoginDto, loginSchema } from '../dto/request/login.request.js';
-import { type RefreshDto, refreshSchema } from '../dto/request/refresh.request.js';
-import { type RegisterDto, registerSchema } from '../dto/request/register.request.js';
+import {
+  type RefreshDto,
+  refreshSchema,
+} from '../dto/request/refresh.request.js';
+import {
+  type RegisterDto,
+  registerSchema,
+} from '../dto/request/register.request.js';
 import {
   type LoginResponseInput,
   loginResponseSchema,
@@ -69,4 +75,3 @@ export class AuthController {
     return this.auth.logout(dto.refreshToken);
   }
 }
-

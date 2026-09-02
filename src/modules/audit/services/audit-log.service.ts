@@ -38,9 +38,7 @@ export class AuditLogService {
       where: { actorId },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: query.limit + 1,
-      ...(query.cursor
-        ? { cursor: { id: query.cursor }, skip: 1 }
-        : {}),
+      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
     });
 
     return buildCursorPage(rows, query.limit, (row) => row.id);
