@@ -2,7 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditOutcome, Prisma } from '../../generated/prisma/client.js';
-import type { AuditRecordInput } from './audit.types.js';
+
+export interface AuditRecordInput {
+  event: string;
+  outcome?: AuditOutcome;
+  actorId?: string;
+  targetType?: string;
+  targetId?: string;
+  metadata?: Prisma.InputJsonValue;
+}
 
 interface RequestFields {
   actorId?: string;
