@@ -7,8 +7,13 @@ import {
   SerializeOptions,
 } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { ApiErrors } from '../../../common/decorators/api-errors.decorator.js';
 import { Public } from '../../../common/decorators/public.decorator.js';
+import {
+  AUTH_THROTTLE_LIMIT,
+  AUTH_THROTTLE_TTL_MS,
+} from '../auth.constants.js';
 import { AuthService } from '../services/auth.service.js';
 import {
   type LoginRequest,
@@ -37,6 +42,9 @@ export class AuthController {
 
   @Public()
   @Post('register')
+  @Throttle({
+    default: { ttl: AUTH_THROTTLE_TTL_MS, limit: AUTH_THROTTLE_LIMIT },
+  })
   @SerializeOptions({ schema: tokenPairResponseSchema })
   @ApiCreatedResponse({ standardSchema: tokenPairResponseSchema })
   @ApiErrors(
@@ -53,6 +61,9 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('login')
+  @Throttle({
+    default: { ttl: AUTH_THROTTLE_TTL_MS, limit: AUTH_THROTTLE_LIMIT },
+  })
   @SerializeOptions({ schema: loginResponseSchema })
   @ApiOkResponse({ standardSchema: loginResponseSchema })
   @ApiErrors(
@@ -69,6 +80,9 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('refresh')
+  @Throttle({
+    default: { ttl: AUTH_THROTTLE_TTL_MS, limit: AUTH_THROTTLE_LIMIT },
+  })
   @SerializeOptions({ schema: tokenPairResponseSchema })
   @ApiOkResponse({ standardSchema: tokenPairResponseSchema })
   @ApiErrors(

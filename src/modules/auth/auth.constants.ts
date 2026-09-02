@@ -7,6 +7,9 @@ export const MAX_ROTATE_ATTEMPTS = 2;
 
 export const MAX_ACTIVE_SESSIONS = 10;
 
+export const AUTH_THROTTLE_TTL_MS = 60 * 1000;
+export const AUTH_THROTTLE_LIMIT = 5;
+
 export const AUTH_AUDIT = {
   AUTHN_LOGIN: 'authn_login',
   AUTHN_LOGOUT: 'authn_logout',
