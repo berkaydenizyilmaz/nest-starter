@@ -88,7 +88,7 @@ türer. Elle yazılmış ikinci bir tanım (DTO sınıfı, `@ApiProperty`) tutma
 **Ad üçlüsü:** şema sabiti → TS tipi → component id türetilir:
 `loginRequestSchema` → `LoginRequest`, `tokenPairResponseSchema` →
 `TokenPairResponseInput`. Component id paylaşılan şekilde kaynak adıdır
-(`Session`), tek operasyona aitse operasyon adı (`ListAuditLogsRequest`).
+(`TokenPair`, `Session`), tek operasyona aitse operasyon adı (`LoginResponse`).
 
 **Şekil gerçekten farklıysa** (yeniden adlandırma, düzleştirme, hesaplanmış alan)
 saf bir mapper yaz ve controller'da çağır. Mapper bağımlılık almaz; alıyorsa o iş
@@ -136,6 +136,10 @@ spec içinde benzersiz olmalı. Fiil + kaynak yaz (`listSessions`, `revokeSessio
   kullan — zod-openapi çeviremiyor ve **uygulama açılmıyor**.
 - **Liste endpoint'inde iki farklı şema.** `@SerializeOptions` eleman şemasını,
   `@ApiOkResponse` dizi şemasını ister. İkisine de `z.array(...)` verirsen 500.
+- **Tüm query nesnesini alan şemaya `.meta({ id })` verme.** `$ref`'e dönüşür,
+  OpenAPI 3.0 ise adsız parametrede `$ref` kabul etmez — swagger parametrelerin
+  hepsini **sessizce düşürür** ve istemci filtreleri hiç görmez. Cevapta zorunlu,
+  gövdede serbest, adlı parametrede de sorunsuz.
 - **Codec (`z.codec`) kullanma.** Serializer decode yönünü çalıştırır, cevap için
   yanlış yön.
 - **`deletedAt: null` filtresini unutma.** Her sorguya elle yazılır;

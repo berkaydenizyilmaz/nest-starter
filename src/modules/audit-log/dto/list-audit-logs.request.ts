@@ -12,7 +12,6 @@ export const listAuditLogsRequestSchema = offsetPageRequestSchema
     from: z.iso.datetime().optional(),
     to: z.iso.datetime().optional(),
   })
-  .strict()
-  .meta({ id: 'ListAuditLogsRequest' });
+  .strict();
 
 export type ListAuditLogsRequest = z.infer<typeof listAuditLogsRequestSchema>;
