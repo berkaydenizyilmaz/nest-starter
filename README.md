@@ -94,9 +94,9 @@ src/
 ├── core/       Altyapı — Prisma, logger, istek bağlamı, denetim yazıcısı
 ├── common/     Ortak parçalar — decorator, guard, hata sınıfları, şema, util
 └── modules/
-    ├── auth/   Örnek modül (yeni modül yazarken buna bak)
-    ├── user/   Başka modüle bağımlı modül örneği
-    ├── audit/  Denetim kaydı okuma yüzeyi + admin controller
+    ├── auth/       Örnek modül (yeni modül yazarken buna bak)
+    ├── user/       Başka modüle bağımlı modül örneği
+    ├── audit-log/  Denetim kaydı okuma yüzeyi + admin controller
     └── health/
 ```
 
