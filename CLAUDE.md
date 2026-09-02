@@ -6,9 +6,9 @@
 kelime dağarcığıdır. `modules/<ad>/` iş mantığıdır — yeni modül yazarken
 `modules/auth/`'a bak.
 
-**Dosya adı türü söyler, klasör 2+ olunca gruplar.** Bir türden tek dosya kökte
-durur, ikinci gelince klasöre taşınır. DTO'lar istisna: `dto/` her zaman ayrı,
-4+ olunca `dto/request/` ve `dto/response/`.
+**Dosya adı türü söyler, klasör 2+ olunca gruplar.** DTO'lar istisna: `dto/` her
+zaman ayrı, 4+ olunca `dto/request/` ve `dto/response/`. Klasör adı sınıfların
+önekidir: `modules/audit-log/` → `AuditLog*`.
 
 **Bir parça `common/`'a mı modüle mi ait?** Ölçüt: içinde o modüle ait mantık var
 mı? `RolesGuard` sadece metadata karşılaştırır → `common/`. `JwtAuthGuard` token'ı
@@ -26,6 +26,12 @@ Paylaşılan yardımcı için de asla; o `common/`'a taşınır.
 - Service veriye doğrudan `PrismaService` ile erişir. Repository katmanı ekleme.
 - Servisin public metotları modülün yetenek listesi gibi okunur; dışarıdan
   çağıranı olmayan metot `private`'tır.
+- Servis metotları `find` ailesi: `findById`, çoğulu `findAll` / `findAllByActor`;
+  `findById` bulamazsa **fırlatır** (TypeORM'ün tersi), null isteyen `…OrNull`.
+  Yazma `create` / `update` / `remove`, gerisi kendi fiili. Sınıf bağlamını
+  tekrarlama: `UserService.remove`, `deleteAccount` değil.
+- Inject edilen alan = sınıf adı eksi `Service`, koleksiyonsa çoğul: `AuditService`
+  → `audit`, `AuditLogService` → `auditLogs`.
 - Yardımcı fonksiyon şu üçünden birini sağlamalı: 2+ çağrı yeri, ismin kodun
   söylemediğini söylemesi, ya da çağıranı tek soyutlama seviyesinde tutması.
   "Metot uzadı" ve "ileride lazım olur" geçerli gerekçe değil — her çıkarma
@@ -45,7 +51,8 @@ Paylaşılan yardımcı için de asla; o `common/`'a taşınır.
 - HTTP'ye çeviren tek yer `AllExceptionsFilter`. Yeni hata türü `DomainError`'dan
   türer, filter'a dokunulmaz.
 - Hata kodları modülün `<ad>.constants.ts`'inde sabittir. Serbest string yazma:
-  typo derlenir ve istemci sözleşmesi sessizce kırılır.
+  typo derlenir ve istemci sözleşmesi sessizce kırılır. Anahtar değerin
+  `UPPER_SNAKE` hâlidir (`AUTHN_LOGIN: 'authn_login'`) — kekelese de ayrışamaz.
 - Mesajlar İngilizce ve geliştiriciye bakar, kullanıcıya gösterilmez. Mesaja
   kullanıcı girdisi koyma — `User ${email} not found` e-postayı sızdırır.
 - Doğrulama hataları **422**, 400 değil; cevap `errors: [{ field, code, message }]`
@@ -71,11 +78,17 @@ türer. Elle yazılmış ikinci bir tanım (DTO sınıfı, `@ApiProperty`) tutma
 - `@SerializeOptions({ schema })` ve `@ApiOkResponse({ standardSchema })` birlikte
   kullanılır: biri alanları ayıklar, diğeri aynı şemayı OpenAPI'ye yazar.
 - Controller'ın dönüş tipi `z.input<typeof şema>` — serialize edilmeden önceki hâl
-  (`Date` içerir). `z.infer` istemcinin aldığı tiptir.
+  (`Date` içerir). `z.infer` istemcinin aldığı tiptir; serializer'ı atlayan kod
+  (yalnızca filter) yoksa export etme.
 - Servis **domain nesnesi** döndürür, cevabın şeklini bilmez. Koruma decorator
   hatırlamaya değil şemaya bağlıdır: `passwordHash` şemada yoksa istemciye ulaşmaz.
 - Yeni response şemasına `.meta({ id: 'Ad' })` ver — yoksa üretilen istemcide her
   kullanım için ayrı anonim tip çıkar.
+
+**Ad üçlüsü:** şema sabiti → TS tipi → component id türetilir:
+`loginRequestSchema` → `LoginRequest`, `tokenPairResponseSchema` →
+`TokenPairResponseInput`. Component id paylaşılan şekilde kaynak adıdır
+(`Session`), tek operasyona aitse operasyon adı (`ListAuditLogsRequest`).
 
 **Şekil gerçekten farklıysa** (yeniden adlandırma, düzleştirme, hesaplanmış alan)
 saf bir mapper yaz ve controller'da çağır. Mapper bağımlılık almaz; alıyorsa o iş
@@ -93,7 +106,9 @@ decorator gerekli, eklemeyen gereksiz.**
 - `@ApiBearerAuth()` — korumalı controller'a.
 - 204 dönen endpoint'e response decorator'ı ekleme.
 
-`operationId` metot adından üretilir — metot adı istemcideki fonksiyon adıdır.
+`operationId` metot adından üretilir — metot adı istemcideki fonksiyon adıdır ve
+spec içinde benzersiz olmalı. Fiil + kaynak yaz (`listSessions`, `revokeSession`);
+çıplak `list` bir sonraki controller'da çakışır.
 
 ## Auth
 
@@ -106,7 +121,7 @@ decorator gerekli, eklemeyen gereksiz.**
 ## Denetim ve anonimleştirme
 
 - Kayıt `core/audit`'teki `AuditService.record()` ile yazılır, okuma
-  `modules/audit`'in işi. Tabloya doğrudan yazma.
+  `modules/audit-log`'un işi. Tabloya doğrudan yazma.
 - Olay adları modülün `<ad>.constants.ts`'inde sabittir; `core/` olay adı bilmez,
   böylece yeni modül audit koduna dokunmadan kendi olaylarını ekler.
 - Kişisel veri tutan her modül kendi `anonymize(id, tx)` metodunu açar. Yeni PII
