@@ -35,6 +35,7 @@ async function bootstrap(): Promise<void> {
   app.enableCors({
     origin: origins.length > 0 ? origins : false,
     credentials: true,
+    exposedHeaders: ['Retry-After'],
   });
 
   if (config.get('NODE_ENV', { infer: true }) !== 'production') {

@@ -80,9 +80,6 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('refresh')
-  @Throttle({
-    default: { ttl: AUTH_THROTTLE_TTL_MS, limit: AUTH_THROTTLE_LIMIT },
-  })
   @SerializeOptions({ schema: tokenPairResponseSchema })
   @ApiOkResponse({ standardSchema: tokenPairResponseSchema })
   @ApiErrors(

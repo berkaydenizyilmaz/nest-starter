@@ -23,6 +23,7 @@ import {
   AUTH_ERROR,
   LOGIN_BACKOFF_BASE_MS,
   LOGIN_BACKOFF_MAX_MS,
+  LOGIN_FAILURE_DECAY_MS,
   LOGIN_FAILURE_THRESHOLD,
 } from '../auth.constants.js';
 import type { TokenSubject } from '../auth.types.js';
@@ -187,15 +188,17 @@ export class AuthService implements OnModuleInit {
   }
 
   private async recordLoginFailure(user: User): Promise<void> {
-    const failedLoginCount = user.failedLoginCount + 1;
+    const { failedLoginCount } = await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        failedLoginCount: staleFailureHistory(user) ? 1 : { increment: 1 },
+        lockedUntil: null,
+      },
+      select: { failedLoginCount: true },
+    });
+
     const excess = failedLoginCount - LOGIN_FAILURE_THRESHOLD;
-    if (excess <= 0) {
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: { failedLoginCount },
-      });
-      return;
-    }
+    if (excess <= 0) return;
 
     const backoffMs = Math.min(
       LOGIN_BACKOFF_BASE_MS * 2 ** (excess - 1),
@@ -204,7 +207,7 @@ export class AuthService implements OnModuleInit {
 
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { failedLoginCount, lockedUntil: new Date(Date.now() + backoffMs) },
+      data: { lockedUntil: new Date(Date.now() + backoffMs) },
     });
 
     await this.audit.record({
@@ -240,6 +243,11 @@ export class AuthService implements OnModuleInit {
       },
     );
   }
+}
+
+function staleFailureHistory(user: { lockedUntil: Date | null }): boolean {
+  if (!user.lockedUntil) return false;
+  return Date.now() - user.lockedUntil.getTime() > LOGIN_FAILURE_DECAY_MS;
 }
 
 function remainingLockSeconds(user: { lockedUntil: Date | null }): number {

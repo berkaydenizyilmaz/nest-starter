@@ -13,6 +13,7 @@ export const AUTH_THROTTLE_LIMIT = 5;
 export const LOGIN_FAILURE_THRESHOLD = 3;
 export const LOGIN_BACKOFF_BASE_MS = 1000;
 export const LOGIN_BACKOFF_MAX_MS = 5 * 60 * 1000;
+export const LOGIN_FAILURE_DECAY_MS = 60 * 60 * 1000;
 
 export const AUTH_AUDIT = {
   AUTHN_LOGIN: 'authn_login',
