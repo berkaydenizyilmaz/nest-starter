@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { NotFoundError } from '../../common/domain.error.js';
-import { unusablePasswordHash } from '../../common/utils/password.util.js';
-import { PrismaService } from '../../core/prisma/prisma.service.js';
-import type { Prisma, User } from '../../generated/prisma/client.js';
-import { AUDIT_TARGET } from '../../common/constants/audit.constants.js';
-import { AuditService } from '../../core/audit/audit.service.js';
-import { SessionService } from '../auth/services/session.service.js';
-import { USER_AUDIT, USER_ERROR } from './user.constants.js';
+import { NotFoundError } from '../../../common/domain.error.js';
+import { unusablePasswordHash } from '../../../common/utils/password.util.js';
+import { PrismaService } from '../../../core/prisma/prisma.service.js';
+import type { Prisma, User } from '../../../generated/prisma/client.js';
+import { AUDIT_TARGET } from '../../../common/constants/audit.constants.js';
+import { AuditService } from '../../../core/audit/audit.service.js';
+import { SessionService } from '../../auth/services/session.service.js';
+import { USER_AUDIT, USER_ERROR } from '../user.constants.js';
 
 @Injectable()
 export class UserService {

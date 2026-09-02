@@ -20,7 +20,7 @@ import {
   securityLogPageSchema,
 } from '../audit/dto/security-log.response.js';
 import { type MeResponseInput, meResponseSchema } from './dto/me.response.js';
-import { UserService } from './user.service.js';
+import { UserService } from './services/user.service.js';
 
 @ApiBearerAuth()
 @Controller({ path: 'users', version: '1' })

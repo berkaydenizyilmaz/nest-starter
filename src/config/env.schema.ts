@@ -22,6 +22,9 @@ export const envSchema = z.object({
     .default('true')
     .transform((val) => val === 'true'),
   SESSION_CLEANUP_RETENTION_DAYS: z.coerce.number().int().min(1).default(7),
+
+  USER_ANONYMIZATION_AFTER_DAYS: z.coerce.number().int().min(1).default(30),
+
   AUDIT_RETENTION_DAYS: z.coerce.number().int().min(1).default(730),
 });
 
