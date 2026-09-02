@@ -5,6 +5,9 @@ import { PrismaService } from '../../../core/prisma/prisma.service.js';
 import { UserService } from './user.service.js';
 import { SessionService } from '../../auth/services/session.service.js';
 import { AuditLogService } from '../../audit/services/audit-log.service.js';
+import { AuditService } from '../../../core/audit/audit.service.js';
+import { AUDIT_TARGET } from '../../../common/constants/audit.constants.js';
+import { USER_AUDIT } from '../user.constants.js';
 import {
   APP_TIMEZONE,
   MS_PER_DAY,
@@ -21,6 +24,7 @@ export class UserAnonymizationService {
     private readonly userService: UserService,
     private readonly sessionService: SessionService,
     private readonly auditLogService: AuditLogService,
+    private readonly audit: AuditService,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_5AM, {
@@ -54,6 +58,15 @@ export class UserAnonymizationService {
           await this.sessionService.anonymize(id, tx);
           await this.auditLogService.anonymize(id, tx);
           await this.userService.anonymize(id, tx);
+
+          await this.audit.record(
+            {
+              event: USER_AUDIT.USER_ANONYMIZED,
+              targetType: AUDIT_TARGET.USER,
+              targetId: id,
+            },
+            tx,
+          );
         });
         successCount++;
       } catch (error) {

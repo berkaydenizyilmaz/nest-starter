@@ -60,6 +60,7 @@ OpenAPI: `/api/docs` (yalnızca `NODE_ENV !== production`).
 | `CRON_ENABLED` | hayır | `true` | Zamanlanmış işler çalışsın mı |
 | `SESSION_CLEANUP_RETENTION_DAYS` | hayır | `7` | Ölü oturumların saklanma süresi (gün) |
 | `AUDIT_RETENTION_DAYS` | hayır | `730` | Audit kayıtlarının saklanma süresi (gün) |
+| `USER_ANONYMIZATION_AFTER_DAYS` | hayır | `14` | Silinen hesabın anonimleştirilmeden önceki geri alma süresi (gün) |
 
 `TRUST_PROXY`'ye **asla `true` verme.** Reverse proxy arkasındaysan hop sayısı
 yaz (genelde `1`). `true` ile istemci `X-Forwarded-For` göndererek IP'sini
