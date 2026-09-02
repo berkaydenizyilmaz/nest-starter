@@ -15,6 +15,7 @@ import { HealthModule } from './modules/health/health.module.js';
 import { UserModule } from './modules/user/user.module.js';
 import { LoggerModule } from './core/logger.module.js';
 import { PrismaModule } from './core/prisma/prisma.module.js';
+import { RequestContextModule } from './core/request-context.module.js';
 import { AllExceptionsFilter } from './common/all-exceptions.filter.js';
 import { JwtAuthGuard } from './modules/auth/jwt-auth.guard.js';
 import { RolesGuard } from './common/roles.guard.js';
@@ -26,6 +27,7 @@ import { RolesGuard } from './common/roles.guard.js';
       validationSchema: envSchema,
     }),
     ScheduleModule.forRoot(),
+    RequestContextModule,
     LoggerModule,
     PrismaModule,
     AuthModule,
