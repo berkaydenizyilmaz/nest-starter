@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiOkResponse } from '@nestjs/swagger';
 import { ApiErrors } from '../../common/decorators/api-errors.decorator.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { Role } from '../../generated/prisma/client.js';
-import { AuditLogService } from './audit-log.service.js';
+import { AuditLogService } from './services/audit-log.service.js';
 import {
   type AuditLogQueryDto,
   auditLogQuerySchema,

@@ -14,7 +14,7 @@ import {
   type CursorQuery,
   cursorQuerySchema,
 } from '../../common/schemas/pagination.schema.js';
-import { AuditLogService } from '../audit/audit-log.service.js';
+import { AuditLogService } from '../audit/services/audit-log.service.js';
 import {
   type SecurityLogPageInput,
   securityLogPageSchema,

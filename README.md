@@ -59,6 +59,7 @@ OpenAPI: `/api/docs` (yalnızca `NODE_ENV !== production`).
 | `LOG_LEVEL` | hayır | `info` | `error` · `warn` · `info` · `debug` |
 | `CRON_CLEANUP_ENABLED` | hayır | `true` | Oturum temizleme cron'u |
 | `SESSION_CLEANUP_RETENTION_DAYS` | hayır | `7` | Ölü oturumların saklanma süresi (gün) |
+| `AUDIT_RETENTION_DAYS` | hayır | `730` | Audit kayıtlarının saklanma süresi (gün) |
 
 `TRUST_PROXY`'ye **asla `true` verme.** Reverse proxy arkasındaysan hop sayısı
 yaz (genelde `1`). `true` ile istemci `X-Forwarded-For` göndererek IP'sini

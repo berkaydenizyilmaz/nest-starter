@@ -22,6 +22,7 @@ export const envSchema = z.object({
     .default('true')
     .transform((val) => val === 'true'),
   SESSION_CLEANUP_RETENTION_DAYS: z.coerce.number().int().min(1).default(7),
+  AUDIT_RETENTION_DAYS: z.coerce.number().int().min(1).default(730),
 });
 
 export type Env = z.infer<typeof envSchema>;

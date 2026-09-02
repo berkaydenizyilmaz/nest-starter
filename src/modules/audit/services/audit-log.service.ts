@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../core/prisma/prisma.service.js';
+import { PrismaService } from '../../../core/prisma/prisma.service.js';
 import {
   buildCursorPage,
   buildOffsetPage,
-} from '../../common/utils/pagination.util.js';
-import type { CursorQuery } from '../../common/schemas/pagination.schema.js';
-import type { AuditLog, Prisma } from '../../generated/prisma/client.js';
-import type { AuditLogQueryDto } from './dto/audit-log-query.request.js';
-import type { AuditLogPageInput } from './dto/audit-log.response.js';
-import type { SecurityLogPageInput } from './dto/security-log.response.js';
+} from '../../../common/utils/pagination.util.js';
+import type { CursorQuery } from '../../../common/schemas/pagination.schema.js';
+import type { AuditLog, Prisma } from '../../../generated/prisma/client.js';
+import type { AuditLogQueryDto } from '../dto/audit-log-query.request.js';
+import type { AuditLogPageInput } from '../dto/audit-log.response.js';
+import type { SecurityLogPageInput } from '../dto/security-log.response.js';
 
 @Injectable()
 export class AuditLogService {
