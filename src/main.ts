@@ -24,7 +24,6 @@ async function bootstrap(): Promise<void> {
   app.set('trust proxy', config.get('TRUST_PROXY', { infer: true }));
 
   app.use(helmet());
-  app.enableShutdownHooks([], { useProcessExit: true });
   app.setGlobalPrefix('api');
   app.enableVersioning({ type: VersioningType.URI });
 
@@ -45,6 +44,8 @@ async function bootstrap(): Promise<void> {
   const port = config.get('PORT', { infer: true });
   const logger = app.get(Logger);
 
+  registerShutdown(app, logger);
+
   try {
     await app.listen(port);
     logger.log(
@@ -54,6 +55,27 @@ async function bootstrap(): Promise<void> {
     logger.error(error, 'Application failed to start');
     process.exit(1);
   }
+}
+
+const FORCE_EXIT_MS = 10_000;
+
+function registerShutdown(app: NestExpressApplication, logger: Logger): void {
+  const shutdown = async (signal: string): Promise<void> => {
+    logger.log(`${signal} received, shutting down`);
+
+    const forceExit = globalThis.setTimeout(() => {
+      logger.error(`Shutdown timed out after ${FORCE_EXIT_MS}ms, forcing exit`);
+      process.exit(1);
+    }, FORCE_EXIT_MS);
+    forceExit.unref();
+
+    await app.close();
+    clearTimeout(forceExit);
+    process.exit(0);
+  };
+
+  process.once('SIGTERM', () => void shutdown('SIGTERM'));
+  process.once('SIGINT', () => void shutdown('SIGINT'));
 }
 
 function setupSwagger(app: Parameters<typeof SwaggerModule.setup>[1]): void {
