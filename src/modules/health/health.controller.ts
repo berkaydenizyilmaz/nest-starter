@@ -24,7 +24,7 @@ export class HealthController {
   @Get('live')
   @ApiOkResponse({ standardSchema: livenessSchema })
   live(): LivenessInput {
-    return { status: 'ok', uptime: Math.floor(process.uptime()) };
+    return { status: 'ok', uptime: this.health.uptimeSeconds() };
   }
 
   @Get('ready')

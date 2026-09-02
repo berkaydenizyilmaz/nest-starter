@@ -50,21 +50,26 @@ async function bootstrap(): Promise<void> {
     await app.listen(port);
     logger.log(
       `Application ready | port=${port} env=${config.get('NODE_ENV', { infer: true })}`,
+      BOOTSTRAP_CONTEXT,
     );
   } catch (error) {
-    logger.error(error, 'Application failed to start');
+    logger.error(error, BOOTSTRAP_CONTEXT);
     process.exit(1);
   }
 }
 
+const BOOTSTRAP_CONTEXT = 'Bootstrap';
 const FORCE_EXIT_MS = 10_000;
 
 function registerShutdown(app: NestExpressApplication, logger: Logger): void {
   const shutdown = async (signal: string): Promise<void> => {
-    logger.log(`${signal} received, shutting down`);
+    logger.log(`${signal} received, shutting down`, BOOTSTRAP_CONTEXT);
 
     const forceExit = globalThis.setTimeout(() => {
-      logger.error(`Shutdown timed out after ${FORCE_EXIT_MS}ms, forcing exit`);
+      logger.error(
+        `Shutdown timed out after ${FORCE_EXIT_MS}ms, forcing exit`,
+        BOOTSTRAP_CONTEXT,
+      );
       process.exit(1);
     }, FORCE_EXIT_MS);
     forceExit.unref();

@@ -1,7 +1,5 @@
 import {
-  Logger,
   Module,
-  type OnApplicationShutdown,
   StandardSchemaSerializerInterceptor,
   StandardSchemaValidationPipe,
 } from '@nestjs/common';
@@ -63,10 +61,4 @@ import { RolesGuard } from './common/roles.guard.js';
     },
   ],
 })
-export class AppModule implements OnApplicationShutdown {
-  private readonly logger = new Logger(AppModule.name);
-
-  onApplicationShutdown(signal?: string): void {
-    this.logger.log(`Shutting down${signal ? ` (${signal})` : ''}`);
-  }
-}
+export class AppModule {}

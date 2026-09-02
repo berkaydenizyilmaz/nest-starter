@@ -11,6 +11,10 @@ export class HealthService {
     this.logger.setContext(HealthService.name);
   }
 
+  uptimeSeconds(): number {
+    return Math.floor(process.uptime());
+  }
+
   async checkDatabase(): Promise<'up' | 'down'> {
     try {
       await this.prisma.$queryRaw`SELECT 1`;
