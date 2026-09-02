@@ -21,9 +21,9 @@ export class UserAnonymizationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService<Env, true>,
-    private readonly userService: UserService,
-    private readonly sessionService: SessionService,
-    private readonly auditLogService: AuditLogService,
+    private readonly users: UserService,
+    private readonly sessions: SessionService,
+    private readonly auditLogs: AuditLogService,
     private readonly audit: AuditService,
   ) {}
 
@@ -55,9 +55,9 @@ export class UserAnonymizationService {
     for (const { id } of users) {
       try {
         await this.prisma.$transaction(async (tx) => {
-          await this.sessionService.anonymize(id, tx);
-          await this.auditLogService.anonymize(id, tx);
-          await this.userService.anonymize(id, tx);
+          await this.sessions.anonymize(id, tx);
+          await this.auditLogs.anonymize(id, tx);
+          await this.users.anonymize(id, tx);
 
           await this.audit.record(
             {
@@ -72,7 +72,7 @@ export class UserAnonymizationService {
       } catch (error) {
         this.logger.error(
           `Failed to anonymize user ${id}`,
-          (error as Error).stack,
+          error instanceof Error ? error.stack : String(error),
         );
       }
     }
