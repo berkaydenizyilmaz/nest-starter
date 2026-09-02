@@ -28,7 +28,7 @@ export class SessionController {
   @Get()
   @SerializeOptions({ schema: sessionResponseSchema })
   @ApiOkResponse({ standardSchema: sessionListResponseSchema })
-  @ApiErrors(HttpStatus.UNAUTHORIZED)
+  @ApiErrors(HttpStatus.UNAUTHORIZED, HttpStatus.TOO_MANY_REQUESTS)
   async listSessions(
     @CurrentUser() user: AuthUser,
   ): Promise<SessionListResponseInput> {
@@ -44,6 +44,7 @@ export class SessionController {
     HttpStatus.UNPROCESSABLE_ENTITY,
     HttpStatus.UNAUTHORIZED,
     HttpStatus.NOT_FOUND,
+    HttpStatus.TOO_MANY_REQUESTS,
   )
   revokeSession(
     @Param('id', { schema: z.uuid() }) id: string,
@@ -54,7 +55,7 @@ export class SessionController {
 
   @Delete()
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiErrors(HttpStatus.UNAUTHORIZED)
+  @ApiErrors(HttpStatus.UNAUTHORIZED, HttpStatus.TOO_MANY_REQUESTS)
   revokeAllSessions(@CurrentUser('id') userId: string): Promise<void> {
     return this.sessions.revokeAll(userId);
   }

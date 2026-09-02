@@ -32,6 +32,7 @@ export class AuditLogAdminController {
     HttpStatus.UNPROCESSABLE_ENTITY,
     HttpStatus.UNAUTHORIZED,
     HttpStatus.FORBIDDEN,
+    HttpStatus.TOO_MANY_REQUESTS,
   )
   listAuditLogs(
     @Query({ schema: listAuditLogsRequestSchema }) query: ListAuditLogsRequest,

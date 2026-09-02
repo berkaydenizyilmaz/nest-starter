@@ -17,6 +17,13 @@ export const envSchema = z.object({
   CORS_ORIGINS: z.string().default(''),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
 
+  THROTTLE_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((val) => val === 'true'),
+  THROTTLE_TTL: z.coerce.number().int().min(1).default(60),
+  THROTTLE_LIMIT: z.coerce.number().int().min(1).default(100),
+
   CRON_ENABLED: z
     .enum(['true', 'false'])
     .default('true')

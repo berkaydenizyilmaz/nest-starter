@@ -6,6 +6,7 @@ import {
   VERSION_NEUTRAL,
 } from '@nestjs/common';
 import { ApiOkResponse, ApiServiceUnavailableResponse } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { HealthService } from './health.service.js';
@@ -17,6 +18,7 @@ import {
 } from './dto/health.response.js';
 
 @Public()
+@SkipThrottle()
 @Controller({ path: 'health', version: VERSION_NEUTRAL })
 export class HealthController {
   constructor(private readonly health: HealthService) {}

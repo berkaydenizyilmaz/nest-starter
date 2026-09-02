@@ -39,7 +39,11 @@ export class AuthController {
   @Post('register')
   @SerializeOptions({ schema: tokenPairResponseSchema })
   @ApiCreatedResponse({ standardSchema: tokenPairResponseSchema })
-  @ApiErrors(HttpStatus.UNPROCESSABLE_ENTITY, HttpStatus.CONFLICT)
+  @ApiErrors(
+    HttpStatus.UNPROCESSABLE_ENTITY,
+    HttpStatus.CONFLICT,
+    HttpStatus.TOO_MANY_REQUESTS,
+  )
   register(
     @Body({ schema: registerRequestSchema }) dto: RegisterRequest,
   ): Promise<TokenPairResponseInput> {
@@ -51,7 +55,11 @@ export class AuthController {
   @Post('login')
   @SerializeOptions({ schema: loginResponseSchema })
   @ApiOkResponse({ standardSchema: loginResponseSchema })
-  @ApiErrors(HttpStatus.UNPROCESSABLE_ENTITY, HttpStatus.UNAUTHORIZED)
+  @ApiErrors(
+    HttpStatus.UNPROCESSABLE_ENTITY,
+    HttpStatus.UNAUTHORIZED,
+    HttpStatus.TOO_MANY_REQUESTS,
+  )
   login(
     @Body({ schema: loginRequestSchema }) dto: LoginRequest,
   ): Promise<LoginResponseInput> {
@@ -63,7 +71,11 @@ export class AuthController {
   @Post('refresh')
   @SerializeOptions({ schema: tokenPairResponseSchema })
   @ApiOkResponse({ standardSchema: tokenPairResponseSchema })
-  @ApiErrors(HttpStatus.UNPROCESSABLE_ENTITY, HttpStatus.UNAUTHORIZED)
+  @ApiErrors(
+    HttpStatus.UNPROCESSABLE_ENTITY,
+    HttpStatus.UNAUTHORIZED,
+    HttpStatus.TOO_MANY_REQUESTS,
+  )
   refresh(
     @Body({ schema: refreshRequestSchema }) dto: RefreshRequest,
   ): Promise<TokenPairResponseInput> {
@@ -73,7 +85,7 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.NO_CONTENT)
   @Post('logout')
-  @ApiErrors(HttpStatus.UNPROCESSABLE_ENTITY)
+  @ApiErrors(HttpStatus.UNPROCESSABLE_ENTITY, HttpStatus.TOO_MANY_REQUESTS)
   logout(
     @Body({ schema: refreshRequestSchema }) dto: RefreshRequest,
   ): Promise<void> {

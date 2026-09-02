@@ -59,6 +59,9 @@ OpenAPI: `/api/docs` (yalnızca `NODE_ENV !== production`).
 | `TRUST_PROXY` | hayır | `0` | Güvenilen proxy hop sayısı |
 | `CORS_ORIGINS` | hayır | boş | Virgülle ayrılmış; boşsa CORS kapalı |
 | `LOG_LEVEL` | hayır | `info` | `error` · `warn` · `info` · `debug` |
+| `THROTTLE_ENABLED` | hayır | `true` | İstek limiti uygulansın mı |
+| `THROTTLE_TTL` | hayır | `60` | Limit penceresi (saniye) |
+| `THROTTLE_LIMIT` | hayır | `100` | Pencere başına istek |
 | `CRON_ENABLED` | hayır | `true` | Zamanlanmış işler bu instance'ta koşsun mu |
 | `SESSION_CLEANUP_RETENTION_DAYS` | hayır | `7` | Ölü oturumların saklanma süresi (gün) |
 | `USER_ANONYMIZATION_AFTER_DAYS` | hayır | `14` | Silinen hesabın geri alma süresi (gün) |

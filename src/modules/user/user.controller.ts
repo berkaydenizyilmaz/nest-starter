@@ -33,7 +33,11 @@ export class UserController {
   @Get('me')
   @SerializeOptions({ schema: meResponseSchema })
   @ApiOkResponse({ standardSchema: meResponseSchema })
-  @ApiErrors(HttpStatus.UNAUTHORIZED, HttpStatus.NOT_FOUND)
+  @ApiErrors(
+    HttpStatus.UNAUTHORIZED,
+    HttpStatus.NOT_FOUND,
+    HttpStatus.TOO_MANY_REQUESTS,
+  )
   getMe(@CurrentUser('id') userId: string): Promise<MeResponseInput> {
     return this.users.findById(userId);
   }
@@ -41,7 +45,11 @@ export class UserController {
   @Get('me/security-log')
   @SerializeOptions({ schema: securityLogPageResponseSchema })
   @ApiOkResponse({ standardSchema: securityLogPageResponseSchema })
-  @ApiErrors(HttpStatus.UNPROCESSABLE_ENTITY, HttpStatus.UNAUTHORIZED)
+  @ApiErrors(
+    HttpStatus.UNPROCESSABLE_ENTITY,
+    HttpStatus.UNAUTHORIZED,
+    HttpStatus.TOO_MANY_REQUESTS,
+  )
   getMySecurityLog(
     @CurrentUser('id') userId: string,
     @Query({ schema: cursorPageRequestSchema }) query: CursorPageRequest,
@@ -51,7 +59,11 @@ export class UserController {
 
   @Delete('me')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiErrors(HttpStatus.UNAUTHORIZED, HttpStatus.NOT_FOUND)
+  @ApiErrors(
+    HttpStatus.UNAUTHORIZED,
+    HttpStatus.NOT_FOUND,
+    HttpStatus.TOO_MANY_REQUESTS,
+  )
   deleteMe(@CurrentUser('id') userId: string): Promise<void> {
     return this.users.remove(userId);
   }
