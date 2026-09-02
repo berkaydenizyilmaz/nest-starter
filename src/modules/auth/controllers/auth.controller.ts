@@ -10,14 +10,17 @@ import { ApiCreatedResponse, ApiOkResponse } from '@nestjs/swagger';
 import { ApiErrors } from '../../../common/decorators/api-errors.decorator.js';
 import { Public } from '../../../common/decorators/public.decorator.js';
 import { AuthService } from '../services/auth.service.js';
-import { type LoginDto, loginSchema } from '../dto/request/login.request.js';
 import {
-  type RefreshDto,
-  refreshSchema,
+  type LoginRequest,
+  loginRequestSchema,
+} from '../dto/request/login.request.js';
+import {
+  type RefreshRequest,
+  refreshRequestSchema,
 } from '../dto/request/refresh.request.js';
 import {
-  type RegisterDto,
-  registerSchema,
+  type RegisterRequest,
+  registerRequestSchema,
 } from '../dto/request/register.request.js';
 import {
   type LoginResponseInput,
@@ -25,7 +28,7 @@ import {
 } from '../dto/response/login.response.js';
 import {
   type TokenPairResponseInput,
-  tokenPairSchema,
+  tokenPairResponseSchema,
 } from '../dto/response/token-pair.response.js';
 
 @Controller({ path: 'auth', version: '1' })
@@ -34,11 +37,11 @@ export class AuthController {
 
   @Public()
   @Post('register')
-  @SerializeOptions({ schema: tokenPairSchema })
-  @ApiCreatedResponse({ standardSchema: tokenPairSchema })
+  @SerializeOptions({ schema: tokenPairResponseSchema })
+  @ApiCreatedResponse({ standardSchema: tokenPairResponseSchema })
   @ApiErrors(HttpStatus.UNPROCESSABLE_ENTITY, HttpStatus.CONFLICT)
   register(
-    @Body({ schema: registerSchema }) dto: RegisterDto,
+    @Body({ schema: registerRequestSchema }) dto: RegisterRequest,
   ): Promise<TokenPairResponseInput> {
     return this.auth.register(dto);
   }
@@ -50,7 +53,7 @@ export class AuthController {
   @ApiOkResponse({ standardSchema: loginResponseSchema })
   @ApiErrors(HttpStatus.UNPROCESSABLE_ENTITY, HttpStatus.UNAUTHORIZED)
   login(
-    @Body({ schema: loginSchema }) dto: LoginDto,
+    @Body({ schema: loginRequestSchema }) dto: LoginRequest,
   ): Promise<LoginResponseInput> {
     return this.auth.login(dto);
   }
@@ -58,11 +61,11 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('refresh')
-  @SerializeOptions({ schema: tokenPairSchema })
-  @ApiOkResponse({ standardSchema: tokenPairSchema })
+  @SerializeOptions({ schema: tokenPairResponseSchema })
+  @ApiOkResponse({ standardSchema: tokenPairResponseSchema })
   @ApiErrors(HttpStatus.UNPROCESSABLE_ENTITY, HttpStatus.UNAUTHORIZED)
   refresh(
-    @Body({ schema: refreshSchema }) dto: RefreshDto,
+    @Body({ schema: refreshRequestSchema }) dto: RefreshRequest,
   ): Promise<TokenPairResponseInput> {
     return this.auth.refresh(dto.refreshToken);
   }
@@ -71,7 +74,9 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @Post('logout')
   @ApiErrors(HttpStatus.UNPROCESSABLE_ENTITY)
-  logout(@Body({ schema: refreshSchema }) dto: RefreshDto): Promise<void> {
+  logout(
+    @Body({ schema: refreshRequestSchema }) dto: RefreshRequest,
+  ): Promise<void> {
     return this.auth.logout(dto.refreshToken);
   }
 }

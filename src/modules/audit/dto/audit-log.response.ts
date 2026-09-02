@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { isoDate } from '../../../common/schemas/iso-date.schema.js';
-import { offsetPageSchema } from '../../../common/schemas/pagination.schema.js';
+import { offsetPageResponseSchema } from '../../../common/schemas/pagination.schema.js';
 import { AuditOutcome } from '../../../generated/prisma/client.js';
 
-export const auditLogSchema = z
+export const auditLogResponseSchema = z
   .object({
     id: z.string(),
     event: z.string(),
@@ -19,8 +19,12 @@ export const auditLogSchema = z
   })
   .meta({ id: 'AuditLog' });
 
-export const auditLogPageSchema = offsetPageSchema(auditLogSchema).meta({
+export const auditLogPageResponseSchema = offsetPageResponseSchema(
+  auditLogResponseSchema,
+).meta({
   id: 'AuditLogPage',
 });
 
-export type AuditLogPageInput = z.input<typeof auditLogPageSchema>;
+export type AuditLogPageResponseInput = z.input<
+  typeof auditLogPageResponseSchema
+>;

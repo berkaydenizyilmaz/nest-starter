@@ -13,11 +13,12 @@ export const sessionResponseSchema = z
   })
   .meta({ id: 'Session' });
 
-export const sessionListSchema = z.array(sessionResponseSchema);
+export const sessionListResponseSchema = z.array(sessionResponseSchema);
 
 export type SessionResponseInput = z.input<typeof sessionResponseSchema>;
-export type SessionListInput = z.input<typeof sessionListSchema>;
-export type SessionResponse = z.infer<typeof sessionResponseSchema>;
+export type SessionListResponseInput = z.input<
+  typeof sessionListResponseSchema
+>;
 
 export function toSessionResponse(
   session: {

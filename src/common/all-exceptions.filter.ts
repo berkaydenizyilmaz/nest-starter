@@ -14,7 +14,7 @@ import {
   type ErrorKind,
   ValidationError,
 } from './domain.error.js';
-import type { ErrorResponseBody } from './schemas/error-response.schema.js';
+import type { ErrorResponse } from './schemas/error-response.schema.js';
 import { COMMON_ERROR } from './constants/error-codes.constants.js';
 
 const KIND_TO_STATUS: Record<ErrorKind, HttpStatus> = {
@@ -78,7 +78,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       );
     }
 
-    const body: ErrorResponseBody = {
+    const body: ErrorResponse = {
       statusCode: described.statusCode,
       code: described.code,
       message: described.message,

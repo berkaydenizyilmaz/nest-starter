@@ -10,10 +10,10 @@ import type { Response } from 'express';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { HealthService } from './health.service.js';
 import {
-  type LivenessInput,
-  livenessSchema,
-  type ReadinessInput,
-  readinessSchema,
+  type LivenessResponseInput,
+  livenessResponseSchema,
+  type ReadinessResponseInput,
+  readinessResponseSchema,
 } from './dto/health.response.js';
 
 @Public()
@@ -22,17 +22,17 @@ export class HealthController {
   constructor(private readonly health: HealthService) {}
 
   @Get('live')
-  @ApiOkResponse({ standardSchema: livenessSchema })
-  getLiveness(): LivenessInput {
+  @ApiOkResponse({ standardSchema: livenessResponseSchema })
+  getLiveness(): LivenessResponseInput {
     return { status: 'ok', uptime: this.health.uptimeSeconds() };
   }
 
   @Get('ready')
-  @ApiOkResponse({ standardSchema: readinessSchema })
-  @ApiServiceUnavailableResponse({ standardSchema: readinessSchema })
+  @ApiOkResponse({ standardSchema: readinessResponseSchema })
+  @ApiServiceUnavailableResponse({ standardSchema: readinessResponseSchema })
   async getReadiness(
     @Res({ passthrough: true }) response: Response,
-  ): Promise<ReadinessInput> {
+  ): Promise<ReadinessResponseInput> {
     const database = await this.health.checkDatabase();
     const ready = database === 'up';
 

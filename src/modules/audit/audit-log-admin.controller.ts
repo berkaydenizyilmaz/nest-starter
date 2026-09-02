@@ -11,12 +11,12 @@ import { Roles } from '../../common/decorators/roles.decorator.js';
 import { Role } from '../../generated/prisma/client.js';
 import { AuditLogService } from './services/audit-log.service.js';
 import {
-  type AuditLogQueryDto,
-  auditLogQuerySchema,
-} from './dto/audit-log-query.request.js';
+  type ListAuditLogsRequest,
+  listAuditLogsRequestSchema,
+} from './dto/list-audit-logs.request.js';
 import {
-  type AuditLogPageInput,
-  auditLogPageSchema,
+  type AuditLogPageResponseInput,
+  auditLogPageResponseSchema,
 } from './dto/audit-log.response.js';
 
 @ApiBearerAuth()
@@ -26,16 +26,16 @@ export class AuditLogAdminController {
   constructor(private readonly audit: AuditLogService) {}
 
   @Get()
-  @SerializeOptions({ schema: auditLogPageSchema })
-  @ApiOkResponse({ standardSchema: auditLogPageSchema })
+  @SerializeOptions({ schema: auditLogPageResponseSchema })
+  @ApiOkResponse({ standardSchema: auditLogPageResponseSchema })
   @ApiErrors(
     HttpStatus.UNPROCESSABLE_ENTITY,
     HttpStatus.UNAUTHORIZED,
     HttpStatus.FORBIDDEN,
   )
   listAuditLogs(
-    @Query({ schema: auditLogQuerySchema }) query: AuditLogQueryDto,
-  ): Promise<AuditLogPageInput> {
+    @Query({ schema: listAuditLogsRequestSchema }) query: ListAuditLogsRequest,
+  ): Promise<AuditLogPageResponseInput> {
     return this.audit.findAll(query);
   }
 }

@@ -13,8 +13,8 @@ import { ApiErrors } from '../../../common/decorators/api-errors.decorator.js';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator.js';
 import type { AuthUser } from '../../../common/auth-user.type.js';
 import {
-  type SessionListInput,
-  sessionListSchema,
+  type SessionListResponseInput,
+  sessionListResponseSchema,
   sessionResponseSchema,
   toSessionResponse,
 } from '../dto/response/session.response.js';
@@ -27,9 +27,11 @@ export class SessionController {
 
   @Get()
   @SerializeOptions({ schema: sessionResponseSchema })
-  @ApiOkResponse({ standardSchema: sessionListSchema })
+  @ApiOkResponse({ standardSchema: sessionListResponseSchema })
   @ApiErrors(HttpStatus.UNAUTHORIZED)
-  async listSessions(@CurrentUser() user: AuthUser): Promise<SessionListInput> {
+  async listSessions(
+    @CurrentUser() user: AuthUser,
+  ): Promise<SessionListResponseInput> {
     const sessions = await this.sessions.findAllActive(user.id);
     return sessions.map((session) =>
       toSessionResponse(session, user.sessionId),

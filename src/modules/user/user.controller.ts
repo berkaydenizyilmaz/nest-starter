@@ -11,13 +11,13 @@ import { ApiBearerAuth, ApiOkResponse } from '@nestjs/swagger';
 import { ApiErrors } from '../../common/decorators/api-errors.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import {
-  type CursorQuery,
-  cursorQuerySchema,
+  type CursorPageRequest,
+  cursorPageRequestSchema,
 } from '../../common/schemas/pagination.schema.js';
 import { AuditLogService } from '../audit/services/audit-log.service.js';
 import {
-  type SecurityLogPageInput,
-  securityLogPageSchema,
+  type SecurityLogPageResponseInput,
+  securityLogPageResponseSchema,
 } from '../audit/dto/security-log.response.js';
 import { type MeResponseInput, meResponseSchema } from './dto/me.response.js';
 import { UserService } from './services/user.service.js';
@@ -39,13 +39,13 @@ export class UserController {
   }
 
   @Get('me/security-log')
-  @SerializeOptions({ schema: securityLogPageSchema })
-  @ApiOkResponse({ standardSchema: securityLogPageSchema })
+  @SerializeOptions({ schema: securityLogPageResponseSchema })
+  @ApiOkResponse({ standardSchema: securityLogPageResponseSchema })
   @ApiErrors(HttpStatus.UNPROCESSABLE_ENTITY, HttpStatus.UNAUTHORIZED)
   getMySecurityLog(
     @CurrentUser('id') userId: string,
-    @Query({ schema: cursorQuerySchema }) query: CursorQuery,
-  ): Promise<SecurityLogPageInput> {
+    @Query({ schema: cursorPageRequestSchema }) query: CursorPageRequest,
+  ): Promise<SecurityLogPageResponseInput> {
     return this.audit.findAllByActor(userId, query);
   }
 

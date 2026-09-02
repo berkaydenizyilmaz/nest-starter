@@ -1,4 +1,4 @@
-import type { OffsetQuery } from '../schemas/pagination.schema.js';
+import type { OffsetPageRequest } from '../schemas/pagination.schema.js';
 
 interface CursorPage<T> {
   data: T[];
@@ -30,7 +30,7 @@ export function buildCursorPage<T>(
 
 export function buildOffsetPage<T>(
   data: T[],
-  query: OffsetQuery,
+  query: OffsetPageRequest,
   total: number,
 ): OffsetPage<T> {
   return {

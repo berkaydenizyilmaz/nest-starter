@@ -1,11 +1,10 @@
 import { z } from 'zod';
 
-export const tokenPairSchema = z
+export const tokenPairResponseSchema = z
   .object({
     accessToken: z.string(),
     refreshToken: z.string(),
   })
   .meta({ id: 'TokenPair' });
 
-export type TokenPairResponseInput = z.input<typeof tokenPairSchema>;
-export type TokenPairResponse = z.infer<typeof tokenPairSchema>;
+export type TokenPairResponseInput = z.input<typeof tokenPairResponseSchema>;

@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { isoDate } from '../../../common/schemas/iso-date.schema.js';
-import { cursorPageSchema } from '../../../common/schemas/pagination.schema.js';
+import { cursorPageResponseSchema } from '../../../common/schemas/pagination.schema.js';
 import { AuditOutcome } from '../../../generated/prisma/client.js';
 
-export const securityLogEntrySchema = z
+export const securityLogEntryResponseSchema = z
   .object({
     id: z.string(),
     event: z.string(),
@@ -16,10 +16,12 @@ export const securityLogEntrySchema = z
   })
   .meta({ id: 'SecurityLogEntry' });
 
-export const securityLogPageSchema = cursorPageSchema(
-  securityLogEntrySchema,
+export const securityLogPageResponseSchema = cursorPageResponseSchema(
+  securityLogEntryResponseSchema,
 ).meta({
   id: 'SecurityLogPage',
 });
 
-export type SecurityLogPageInput = z.input<typeof securityLogPageSchema>;
+export type SecurityLogPageResponseInput = z.input<
+  typeof securityLogPageResponseSchema
+>;

@@ -11,24 +11,24 @@ const limitField = z.coerce
   .max(PAGINATION_MAX_LIMIT)
   .default(PAGINATION_DEFAULT_LIMIT);
 
-export const offsetQuerySchema = z
+export const offsetPageRequestSchema = z
   .object({
     page: z.coerce.number().int().min(1).default(1),
     limit: limitField,
   })
   .strict();
 
-export const cursorQuerySchema = z
+export const cursorPageRequestSchema = z
   .object({
     cursor: z.string().optional(),
     limit: limitField,
   })
   .strict();
 
-export type OffsetQuery = z.infer<typeof offsetQuerySchema>;
-export type CursorQuery = z.infer<typeof cursorQuerySchema>;
+export type OffsetPageRequest = z.infer<typeof offsetPageRequestSchema>;
+export type CursorPageRequest = z.infer<typeof cursorPageRequestSchema>;
 
-export const offsetPageSchema = <T extends z.ZodType>(item: T) =>
+export const offsetPageResponseSchema = <T extends z.ZodType>(item: T) =>
   z.object({
     data: z.array(item),
     meta: z.object({
@@ -39,7 +39,7 @@ export const offsetPageSchema = <T extends z.ZodType>(item: T) =>
     }),
   });
 
-export const cursorPageSchema = <T extends z.ZodType>(item: T) =>
+export const cursorPageResponseSchema = <T extends z.ZodType>(item: T) =>
   z.object({
     data: z.array(item),
     meta: z.object({

@@ -21,4 +21,4 @@ export const errorResponseSchema = z
   .meta({ id: 'ErrorResponse' });
 
 export type ValidationIssue = z.infer<typeof validationIssueSchema>;
-export type ErrorResponseBody = z.infer<typeof errorResponseSchema>;
+export type ErrorResponse = z.infer<typeof errorResponseSchema>;

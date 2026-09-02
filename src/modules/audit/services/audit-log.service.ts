@@ -4,17 +4,19 @@ import {
   buildCursorPage,
   buildOffsetPage,
 } from '../../../common/utils/pagination.util.js';
-import type { CursorQuery } from '../../../common/schemas/pagination.schema.js';
+import type { CursorPageRequest } from '../../../common/schemas/pagination.schema.js';
 import { Prisma } from '../../../generated/prisma/client.js';
-import type { AuditLogQueryDto } from '../dto/audit-log-query.request.js';
-import type { AuditLogPageInput } from '../dto/audit-log.response.js';
-import type { SecurityLogPageInput } from '../dto/security-log.response.js';
+import type { ListAuditLogsRequest } from '../dto/list-audit-logs.request.js';
+import type { AuditLogPageResponseInput } from '../dto/audit-log.response.js';
+import type { SecurityLogPageResponseInput } from '../dto/security-log.response.js';
 
 @Injectable()
 export class AuditLogService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(query: AuditLogQueryDto): Promise<AuditLogPageInput> {
+  async findAll(
+    query: ListAuditLogsRequest,
+  ): Promise<AuditLogPageResponseInput> {
     const where = this.buildWhere(query);
 
     const [rows, total] = await Promise.all([
@@ -32,8 +34,8 @@ export class AuditLogService {
 
   async findAllByActor(
     actorId: string,
-    query: CursorQuery,
-  ): Promise<SecurityLogPageInput> {
+    query: CursorPageRequest,
+  ): Promise<SecurityLogPageResponseInput> {
     const rows = await this.prisma.auditLog.findMany({
       where: { actorId },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -54,7 +56,7 @@ export class AuditLogService {
     });
   }
 
-  private buildWhere(query: AuditLogQueryDto): Prisma.AuditLogWhereInput {
+  private buildWhere(query: ListAuditLogsRequest): Prisma.AuditLogWhereInput {
     const createdAt: Prisma.DateTimeFilter = {};
     if (query.from) createdAt.gte = new Date(query.from);
     if (query.to) createdAt.lte = new Date(query.to);

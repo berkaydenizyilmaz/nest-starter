@@ -18,8 +18,8 @@ import {
 } from '../../../generated/prisma/client.js';
 import { AUTH_AUDIT, AUTH_ERROR } from '../auth.constants.js';
 import type { TokenSubject } from '../auth.types.js';
-import type { LoginDto } from '../dto/request/login.request.js';
-import type { RegisterDto } from '../dto/request/register.request.js';
+import type { LoginRequest } from '../dto/request/login.request.js';
+import type { RegisterRequest } from '../dto/request/register.request.js';
 import type { LoginResponseInput } from '../dto/response/login.response.js';
 import type { TokenPairResponseInput } from '../dto/response/token-pair.response.js';
 import { SessionService } from './session.service.js';
@@ -40,7 +40,7 @@ export class AuthService implements OnModuleInit {
     this.dummyPasswordHash = await unusablePasswordHash();
   }
 
-  async register(input: RegisterDto): Promise<TokenPairResponseInput> {
+  async register(input: RegisterRequest): Promise<TokenPairResponseInput> {
     const passwordHash = await argon2.hash(input.password);
 
     const { user, issued } = await this.prisma.$transaction(async (tx) => {
@@ -84,7 +84,7 @@ export class AuthService implements OnModuleInit {
     };
   }
 
-  async login(input: LoginDto): Promise<LoginResponseInput> {
+  async login(input: LoginRequest): Promise<LoginResponseInput> {
     const user = await this.prisma.user.findUnique({
       where: { email: input.email },
     });

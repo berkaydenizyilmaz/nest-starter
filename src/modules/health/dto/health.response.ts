@@ -1,13 +1,13 @@
 import { z } from 'zod';
 
-export const livenessSchema = z
+export const livenessResponseSchema = z
   .object({
     status: z.literal('ok'),
     uptime: z.number().int(),
   })
   .meta({ id: 'Liveness' });
 
-export const readinessSchema = z
+export const readinessResponseSchema = z
   .object({
     status: z.enum(['ready', 'not_ready']),
     checks: z.object({
@@ -16,5 +16,5 @@ export const readinessSchema = z
   })
   .meta({ id: 'Readiness' });
 
-export type LivenessInput = z.input<typeof livenessSchema>;
-export type ReadinessInput = z.input<typeof readinessSchema>;
+export type LivenessResponseInput = z.input<typeof livenessResponseSchema>;
+export type ReadinessResponseInput = z.input<typeof readinessResponseSchema>;

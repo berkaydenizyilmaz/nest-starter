@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { emailAddress } from '../../../../common/schemas/email.schema.js';
 
-export const loginSchema = z
+export const loginRequestSchema = z
   .object({
     email: emailAddress(),
     password: z.string().min(1),
@@ -9,4 +9,4 @@ export const loginSchema = z
   .strict()
   .meta({ id: 'LoginRequest' });
 
-export type LoginDto = z.infer<typeof loginSchema>;
+export type LoginRequest = z.infer<typeof loginRequestSchema>;

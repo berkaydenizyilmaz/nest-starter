@@ -16,4 +16,3 @@ export const meResponseSchema = z
   .meta({ id: 'Me' });
 
 export type MeResponseInput = z.input<typeof meResponseSchema>;
-export type MeResponse = z.infer<typeof meResponseSchema>;
