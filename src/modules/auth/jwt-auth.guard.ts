@@ -66,7 +66,7 @@ export class JwtAuthGuard implements CanActivate {
     };
 
     request.user = user;
-    this.cls.set('user', user);
+    this.cls.set('userId', user.id);
 
     return true;
   }

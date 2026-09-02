@@ -9,12 +9,16 @@ import {
 import { MS_PER_DAY } from '../../../common/constants/time.constants.js';
 import type { Env } from '../../../config/env.schema.js';
 import { PrismaService } from '../../../core/prisma/prisma.service.js';
+import { AUDIT_TARGET } from '../../../common/constants/audit.constants.js';
+import { AuditService } from '../../../core/audit/audit.service.js';
 import {
+  AuditOutcome,
   Prisma,
   type Session,
   type User,
 } from '../../../generated/prisma/client.js';
 import {
+  AUTH_AUDIT,
   AUTH_ERROR,
   MAX_ACTIVE_SESSIONS,
   MAX_ROTATE_ATTEMPTS,
@@ -28,6 +32,7 @@ export class SessionService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService<Env, true>,
     private readonly cls: ClsService,
+    private readonly audit: AuditService,
   ) {}
 
   async issue(
@@ -66,11 +71,16 @@ export class SessionService {
     );
   }
 
-  async revokeByToken(refreshToken: string): Promise<void> {
-    await this.prisma.session.updateMany({
+  async revokeByToken(
+    refreshToken: string,
+  ): Promise<{ id: string; userId: string } | null> {
+    const [revoked] = await this.prisma.session.updateManyAndReturn({
       where: { tokenHash: hashToken(refreshToken), revokedAt: null },
       data: { revokedAt: new Date() },
+      select: { id: true, userId: true },
     });
+
+    return revoked ?? null;
   }
 
   async revokeById(sessionId: string, userId: string): Promise<void> {
@@ -85,16 +95,33 @@ export class SessionService {
         'Session not found',
       );
     }
+
+    await this.audit.record({
+      event: AUTH_AUDIT.SESSION_REVOKED,
+      targetType: AUDIT_TARGET.SESSION,
+      targetId: sessionId,
+    });
   }
 
   async revokeAll(
     userId: string,
     client: Prisma.TransactionClient = this.prisma,
   ): Promise<void> {
-    await client.session.updateMany({
+    const revoked = await client.session.updateMany({
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+
+    await this.audit.record(
+      {
+        event: AUTH_AUDIT.SESSION_REVOKED,
+        actorId: userId,
+        targetType: AUDIT_TARGET.USER,
+        targetId: userId,
+        metadata: { scope: 'all', count: revoked.count },
+      },
+      client,
+    );
   }
 
   async listActive(userId: string): Promise<Session[]> {
@@ -186,6 +213,14 @@ export class SessionService {
   }
 
   private async reuseDetected(userId: string): Promise<never> {
+    await this.audit.record({
+      event: AUTH_AUDIT.SESSION_TOKEN_REUSE,
+      outcome: AuditOutcome.FAILURE,
+      actorId: userId,
+      targetType: AUDIT_TARGET.USER,
+      targetId: userId,
+    });
+
     await this.revokeAll(userId);
     throw new UnauthorizedError(
       AUTH_ERROR.REFRESH_TOKEN_REUSED,

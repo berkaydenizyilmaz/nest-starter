@@ -2,14 +2,13 @@ import { randomUUID } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { ClsModule, type ClsService } from 'nestjs-cls';
-import type { AuthUser } from '../common/auth-user.type.js';
 
 declare module 'nestjs-cls' {
   interface ClsStore {
     ip?: string;
     userAgent?: string;
     device?: string;
-    user?: AuthUser;
+    userId?: string;
   }
 }
 

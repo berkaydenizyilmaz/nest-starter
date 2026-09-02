@@ -7,6 +7,16 @@ export const MAX_ROTATE_ATTEMPTS = 2;
 
 export const MAX_ACTIVE_SESSIONS = 10;
 
+export const AUTH_AUDIT = {
+  LOGIN: 'authn_login',
+  LOGOUT: 'authn_logout',
+  SESSION_REVOKED: 'session_revoked',
+  SESSION_TOKEN_REUSE: 'session_token_reuse',
+
+  USER_CREATED: 'user_created',
+  USER_REACTIVATED: 'user_reactivated',
+} as const;
+
 export const AUTH_ERROR = {
   EMAIL_TAKEN: 'EMAIL_TAKEN',
   INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',

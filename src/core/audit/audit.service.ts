@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
-import { PrismaService } from '../../core/prisma/prisma.service.js';
+import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditOutcome, Prisma } from '../../generated/prisma/client.js';
 import type { AuditRecordInput } from './audit.types.js';
 
@@ -43,7 +43,7 @@ export class AuditService {
     if (!this.cls.isActive()) return {};
 
     return {
-      actorId: this.cls.get('user')?.id,
+      actorId: this.cls.get('userId'),
       ip: this.cls.get('ip'),
       userAgent: this.cls.get('userAgent'),
       requestId: this.cls.getId(),

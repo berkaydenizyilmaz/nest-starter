@@ -9,8 +9,14 @@ import {
 } from '../../../common/domain.error.js';
 import type { Env } from '../../../config/env.schema.js';
 import { PrismaService } from '../../../core/prisma/prisma.service.js';
-import { Prisma, type User } from '../../../generated/prisma/client.js';
-import { AUTH_ERROR } from '../auth.constants.js';
+import { AUDIT_TARGET } from '../../../common/constants/audit.constants.js';
+import { AuditService } from '../../../core/audit/audit.service.js';
+import {
+  AuditOutcome,
+  Prisma,
+  type User,
+} from '../../../generated/prisma/client.js';
+import { AUTH_AUDIT, AUTH_ERROR } from '../auth.constants.js';
 import type { TokenSubject } from '../auth.types.js';
 import type { LoginDto } from '../dto/request/login.request.js';
 import type { RegisterDto } from '../dto/request/register.request.js';
@@ -27,6 +33,7 @@ export class AuthService implements OnModuleInit {
     private readonly jwt: JwtService,
     private readonly config: ConfigService<Env, true>,
     private readonly sessions: SessionService,
+    private readonly audit: AuditService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -57,6 +64,16 @@ export class AuthService implements OnModuleInit {
         throw error;
       }
 
+      await this.audit.record(
+        {
+          event: AUTH_AUDIT.USER_CREATED,
+          actorId: created.id,
+          targetType: AUDIT_TARGET.USER,
+          targetId: created.id,
+        },
+        tx,
+      );
+
       return {
         user: created,
         issued: await this.sessions.issue(created.id, tx),
@@ -80,6 +97,16 @@ export class AuthService implements OnModuleInit {
     );
 
     if (!user || !passwordMatches) {
+      await this.audit.record({
+        event: AUTH_AUDIT.LOGIN,
+        outcome: AuditOutcome.FAILURE,
+        actorId: user?.id,
+        targetType: user ? AUDIT_TARGET.USER : undefined,
+        targetId: user?.id,
+        // Kullanıcı bulunamadıysa kimliği yok; denenen adres tek adli ipucu.
+        metadata: user ? undefined : { email: input.email },
+      });
+
       throw new UnauthorizedError(
         AUTH_ERROR.INVALID_CREDENTIALS,
         'Invalid email or password',
@@ -95,6 +122,22 @@ export class AuthService implements OnModuleInit {
 
     const tokens = await this.issueTokens(user);
 
+    await this.audit.record({
+      event: AUTH_AUDIT.LOGIN,
+      actorId: user.id,
+      targetType: AUDIT_TARGET.USER,
+      targetId: user.id,
+    });
+
+    if (reactivated) {
+      await this.audit.record({
+        event: AUTH_AUDIT.USER_REACTIVATED,
+        actorId: user.id,
+        targetType: AUDIT_TARGET.USER,
+        targetId: user.id,
+      });
+    }
+
     return reactivated ? { ...tokens, reactivated: true } : tokens;
   }
 
@@ -107,8 +150,16 @@ export class AuthService implements OnModuleInit {
     };
   }
 
-  logout(refreshToken: string): Promise<void> {
-    return this.sessions.revokeByToken(refreshToken);
+  async logout(refreshToken: string): Promise<void> {
+    const revoked = await this.sessions.revokeByToken(refreshToken);
+    if (!revoked) return;
+
+    await this.audit.record({
+      event: AUTH_AUDIT.LOGOUT,
+      actorId: revoked.userId,
+      targetType: AUDIT_TARGET.SESSION,
+      targetId: revoked.id,
+    });
   }
 
   private async issueTokens(
