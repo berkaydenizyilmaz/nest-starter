@@ -41,25 +41,35 @@ export class AuthService implements OnModuleInit {
   ): Promise<TokenPairResponseInput> {
     const passwordHash = await argon2.hash(input.password);
 
-    let user: User;
-    try {
-      user = await this.prisma.user.create({
-        data: { email: input.email, passwordHash },
-      });
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        throw new ConflictError(
-          AUTH_ERROR.EMAIL_TAKEN,
-          'Email is already registered',
-        );
+    const { user, issued } = await this.prisma.$transaction(async (tx) => {
+      let created: User;
+      try {
+        created = await tx.user.create({
+          data: { email: input.email, passwordHash },
+        });
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          throw new ConflictError(
+            AUTH_ERROR.EMAIL_TAKEN,
+            'Email is already registered',
+          );
+        }
+        throw error;
       }
-      throw error;
-    }
 
-    return this.issueTokens(user, context);
+      return {
+        user: created,
+        issued: await this.sessions.issue(created.id, context, tx),
+      };
+    });
+
+    return {
+      accessToken: await this.signAccessToken(user, issued.sessionId),
+      refreshToken: issued.token,
+    };
   }
 
   async login(

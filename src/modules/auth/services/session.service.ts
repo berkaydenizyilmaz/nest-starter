@@ -8,7 +8,11 @@ import {
 import { MS_PER_DAY } from '../../../common/constants/time.constants.js';
 import type { Env } from '../../../config/env.schema.js';
 import { PrismaService } from '../../../core/prisma/prisma.service.js';
-import type { Session, User } from '../../../generated/prisma/client.js';
+import {
+  Prisma,
+  type Session,
+  type User,
+} from '../../../generated/prisma/client.js';
 import {
   AUTH_ERROR,
   MAX_ACTIVE_SESSIONS,
@@ -28,10 +32,11 @@ export class SessionService {
   async issue(
     userId: string,
     context: SessionContext,
+    client: Prisma.TransactionClient = this.prisma,
   ): Promise<{ token: string; sessionId: string }> {
     const token = this.createToken();
 
-    const session = await this.prisma.session.create({
+    const session = await client.session.create({
       data: {
         userId,
         tokenHash: hashToken(token),
@@ -42,7 +47,7 @@ export class SessionService {
       },
     });
 
-    await this.revokeSessionsBeyondLimit(userId);
+    await this.revokeSessionsBeyondLimit(userId, client);
 
     return { token, sessionId: session.id };
   }
@@ -83,8 +88,11 @@ export class SessionService {
     }
   }
 
-  async revokeAll(userId: string): Promise<void> {
-    await this.prisma.session.updateMany({
+  async revokeAll(
+    userId: string,
+    client: Prisma.TransactionClient = this.prisma,
+  ): Promise<void> {
+    await client.session.updateMany({
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
@@ -97,8 +105,11 @@ export class SessionService {
     });
   }
 
-  private async revokeSessionsBeyondLimit(userId: string): Promise<void> {
-    const excess = await this.prisma.session.findMany({
+  private async revokeSessionsBeyondLimit(
+    userId: string,
+    client: Prisma.TransactionClient,
+  ): Promise<void> {
+    const excess = await client.session.findMany({
       where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
       orderBy: { lastUsedAt: 'desc' },
       select: { id: true },
@@ -107,7 +118,7 @@ export class SessionService {
 
     if (excess.length === 0) return;
 
-    await this.prisma.session.updateMany({
+    await client.session.updateMany({
       where: { id: { in: excess.map((session) => session.id) } },
       data: { revokedAt: new Date() },
     });

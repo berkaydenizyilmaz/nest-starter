@@ -25,15 +25,17 @@ export class UserService {
   }
 
   async deleteAccount(userId: string): Promise<void> {
-    const deleted = await this.prisma.user.updateMany({
-      where: { id: userId, deletedAt: null },
-      data: { deletedAt: new Date() },
+    await this.prisma.$transaction(async (tx) => {
+      const deleted = await tx.user.updateMany({
+        where: { id: userId, deletedAt: null },
+        data: { deletedAt: new Date() },
+      });
+
+      if (deleted.count === 0) {
+        throw new NotFoundError(USER_ERROR.NOT_FOUND, 'User not found');
+      }
+
+      await this.sessions.revokeAll(userId, tx);
     });
-
-    if (deleted.count === 0) {
-      throw new NotFoundError(USER_ERROR.NOT_FOUND, 'User not found');
-    }
-
-    await this.sessions.revokeAll(userId);
   }
 }
