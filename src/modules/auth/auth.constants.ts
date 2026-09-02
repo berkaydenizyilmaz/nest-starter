@@ -8,8 +8,8 @@ export const MAX_ROTATE_ATTEMPTS = 2;
 export const MAX_ACTIVE_SESSIONS = 10;
 
 export const AUTH_AUDIT = {
-  LOGIN: 'authn_login',
-  LOGOUT: 'authn_logout',
+  AUTHN_LOGIN: 'authn_login',
+  AUTHN_LOGOUT: 'authn_logout',
   SESSION_REVOKED: 'session_revoked',
   SESSION_TOKEN_REUSE: 'session_token_reuse',
 

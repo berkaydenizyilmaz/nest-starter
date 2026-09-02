@@ -8,7 +8,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { toValidationError } from './common/utils/validation.util.js';
 import { AuditModule } from './core/audit/audit.module.js';
-import { AuditLogModule } from './modules/audit/audit-log.module.js';
+import { AuditLogModule } from './modules/audit-log/audit-log.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { envSchema } from './config/env.schema.js';
 import { HealthModule } from './modules/health/health.module.js';

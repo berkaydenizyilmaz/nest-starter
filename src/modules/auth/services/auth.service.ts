@@ -96,7 +96,7 @@ export class AuthService implements OnModuleInit {
 
     if (!user || !passwordMatches) {
       await this.audit.record({
-        event: AUTH_AUDIT.LOGIN,
+        event: AUTH_AUDIT.AUTHN_LOGIN,
         outcome: AuditOutcome.FAILURE,
         actorId: user?.id,
         targetType: user ? AUDIT_TARGET.USER : undefined,
@@ -121,7 +121,7 @@ export class AuthService implements OnModuleInit {
     const tokens = await this.issueTokens(user);
 
     await this.audit.record({
-      event: AUTH_AUDIT.LOGIN,
+      event: AUTH_AUDIT.AUTHN_LOGIN,
       actorId: user.id,
       targetType: AUDIT_TARGET.USER,
       targetId: user.id,
@@ -153,7 +153,7 @@ export class AuthService implements OnModuleInit {
     if (!revoked) return;
 
     await this.audit.record({
-      event: AUTH_AUDIT.LOGOUT,
+      event: AUTH_AUDIT.AUTHN_LOGOUT,
       actorId: revoked.userId,
       targetType: AUDIT_TARGET.SESSION,
       targetId: revoked.id,

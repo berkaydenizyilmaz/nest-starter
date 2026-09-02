@@ -23,7 +23,7 @@ import {
 @Roles(Role.ADMIN)
 @Controller({ path: 'admin/audit-logs', version: '1' })
 export class AuditLogAdminController {
-  constructor(private readonly audit: AuditLogService) {}
+  constructor(private readonly auditLogs: AuditLogService) {}
 
   @Get()
   @SerializeOptions({ schema: auditLogPageResponseSchema })
@@ -36,6 +36,6 @@ export class AuditLogAdminController {
   listAuditLogs(
     @Query({ schema: listAuditLogsRequestSchema }) query: ListAuditLogsRequest,
   ): Promise<AuditLogPageResponseInput> {
-    return this.audit.findAll(query);
+    return this.auditLogs.findAll(query);
   }
 }

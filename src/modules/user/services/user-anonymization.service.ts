@@ -5,7 +5,7 @@ import { PinoLogger } from 'nestjs-pino';
 import { PrismaService } from '../../../core/prisma/prisma.service.js';
 import { UserService } from './user.service.js';
 import { SessionService } from '../../auth/services/session.service.js';
-import { AuditLogService } from '../../audit/services/audit-log.service.js';
+import { AuditLogService } from '../../audit-log/services/audit-log.service.js';
 import { AuditService } from '../../../core/audit/audit.service.js';
 import { AUDIT_TARGET } from '../../../common/constants/audit.constants.js';
 import { USER_AUDIT } from '../user.constants.js';

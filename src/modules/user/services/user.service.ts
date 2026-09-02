@@ -22,7 +22,7 @@ export class UserService {
     });
 
     if (!user) {
-      throw new NotFoundError(USER_ERROR.NOT_FOUND, 'User not found');
+      throw new NotFoundError(USER_ERROR.USER_NOT_FOUND, 'User not found');
     }
 
     return user;
@@ -36,7 +36,7 @@ export class UserService {
       });
 
       if (deleted.count === 0) {
-        throw new NotFoundError(USER_ERROR.NOT_FOUND, 'User not found');
+        throw new NotFoundError(USER_ERROR.USER_NOT_FOUND, 'User not found');
       }
 
       await this.audit.record(
