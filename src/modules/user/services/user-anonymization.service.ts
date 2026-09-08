@@ -82,6 +82,7 @@ export class UserAnonymizationService {
           await this.audit.record(
             {
               event: USER_AUDIT.USER_ANONYMIZED,
+              subjectId: id,
               targetType: AUDIT_TARGET.USER,
               targetId: id,
             },

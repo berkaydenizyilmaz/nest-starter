@@ -75,6 +75,7 @@ export class AuthService implements OnModuleInit {
         {
           event: AUTH_AUDIT.USER_CREATED,
           actorId: created.id,
+          subjectId: created.id,
           targetType: AUDIT_TARGET.USER,
           targetId: created.id,
         },
@@ -121,6 +122,7 @@ export class AuthService implements OnModuleInit {
         event: AUTH_AUDIT.AUTHN_LOGIN,
         outcome: AuditOutcome.FAILURE,
         actorId: user?.id,
+        subjectId: user?.id,
         targetType: user ? AUDIT_TARGET.USER : undefined,
         targetId: user?.id,
         metadata: user ? undefined : { email: input.email },
@@ -149,6 +151,7 @@ export class AuthService implements OnModuleInit {
     await this.audit.record({
       event: AUTH_AUDIT.AUTHN_LOGIN,
       actorId: user.id,
+      subjectId: user.id,
       targetType: AUDIT_TARGET.USER,
       targetId: user.id,
     });
@@ -157,6 +160,7 @@ export class AuthService implements OnModuleInit {
       await this.audit.record({
         event: AUTH_AUDIT.USER_REACTIVATED,
         actorId: user.id,
+        subjectId: user.id,
         targetType: AUDIT_TARGET.USER,
         targetId: user.id,
       });
@@ -181,6 +185,7 @@ export class AuthService implements OnModuleInit {
     await this.audit.record({
       event: AUTH_AUDIT.AUTHN_LOGOUT,
       actorId: revoked.userId,
+      subjectId: revoked.userId,
       targetType: AUDIT_TARGET.SESSION,
       targetId: revoked.id,
     });
@@ -213,6 +218,7 @@ export class AuthService implements OnModuleInit {
       event: AUTH_AUDIT.AUTHN_LOGIN_LOCK,
       outcome: AuditOutcome.FAILURE,
       actorId: user.id,
+      subjectId: user.id,
       targetType: AUDIT_TARGET.USER,
       targetId: user.id,
       metadata: { reason: 'maxretries', backoffMs },

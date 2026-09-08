@@ -7,6 +7,7 @@ export interface AuditRecordInput {
   event: string;
   outcome?: AuditOutcome;
   actorId?: string;
+  subjectId?: string;
   targetType?: string;
   targetId?: string;
   metadata?: Prisma.InputJsonValue;
@@ -37,6 +38,7 @@ export class AuditService {
         event: input.event,
         outcome: input.outcome ?? AuditOutcome.SUCCESS,
         actorId: input.actorId ?? request.actorId,
+        subjectId: input.subjectId,
         targetType: input.targetType,
         targetId: input.targetId,
         metadata: input.metadata,

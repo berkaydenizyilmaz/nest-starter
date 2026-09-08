@@ -33,6 +33,7 @@ export class RolesGuard implements CanActivate {
       await this.audit.record({
         event: COMMON_AUDIT.AUTHZ_FAIL,
         outcome: AuditOutcome.FAILURE,
+        subjectId: request.user?.id,
         targetType: request.user ? AUDIT_TARGET.USER : undefined,
         targetId: request.user?.id,
         metadata: { required, actual: request.user?.role ?? null },

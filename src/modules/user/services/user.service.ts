@@ -42,6 +42,7 @@ export class UserService {
       await this.audit.record(
         {
           event: USER_AUDIT.USER_DELETED,
+          subjectId: userId,
           targetType: AUDIT_TARGET.USER,
           targetId: userId,
         },

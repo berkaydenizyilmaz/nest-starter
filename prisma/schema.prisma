@@ -66,6 +66,7 @@ model AuditLog {
   outcome AuditOutcome @default(SUCCESS)
 
   actorId    String?
+  subjectId  String?
   targetType String?
   targetId   String?
 
@@ -77,6 +78,7 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@index([actorId, createdAt])
+  @@index([subjectId, createdAt])
   @@index([targetType, targetId, createdAt])
   @@index([event, outcome, createdAt])
 }
