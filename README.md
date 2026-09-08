@@ -258,9 +258,6 @@ Bilerek dışarıda; ihtiyaç duyan projede eklenir.
   paketin tipleri `@nestjs/common/interfaces`'ten import ediyor, Nest 12 o alt
   yolu `exports` haritasında açmıyor, çözülemeyen tipin `Pick<>`'i alanı zorunlu
   yapıyor. Yalnızca tip düzeyinde; silersen derleme kırılır.
-- **`nestjs-cls` peer aralığı Nest 12'yi kapsamıyor.** Kurulum ve çalışma
-  doğrulandı, uyarı görmezden geliniyor;
-  [#626](https://github.com/Papooch/nestjs-cls/issues/626) kapandığında güncelle.
 - **BFF arkasındaysan** `request.ip` ve `User-Agent` o sunucunun değerleri olur;
   oturum ve denetim kayıtları bütün web kullanıcılarını aynı cihaz gibi gösterir.
   BFF gerçek `X-Forwarded-For`, `User-Agent` ve `X-Device-Name` başlıklarını
