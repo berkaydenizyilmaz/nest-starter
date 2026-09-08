@@ -147,8 +147,11 @@ yetki reddi, hesap silme ve anonimleştirme kalıcı olarak kaydediliyor. Olay
 adları OWASP Logging Vocabulary tabanlı (`authn_login`, `user_deleted`), sonuç
 ayrı bir `outcome` alanında; `requestId` satırı uygulama loglarına bağlıyor.
 
-Kullanıcı kendi geçmişini `/users/me/security-log`'da dar bir şemayla görür,
-admin tümünü `/admin/audit-logs`'ta filtreleyerek gezer.
+Her kayıt üç ayrı kimlik taşır: `actorId` kim yaptı, `subjectId` olay kimin
+hakkında, `targetType`/`targetId` neye dokunuldu. Kullanıcı kendi geçmişini
+`/users/me/security-log`'da **özne** bazlı görür — yani kendi yaptıkları değil,
+hesabına dair olanlar; başkasının hesabına yaptıkları kendi günlüğüne düşmez.
+Admin tümünü `/admin/audit-logs`'ta her üç kimliğe göre filtreleyerek gezer.
 
 **Yetkilendirme.** Her endpoint varsayılan olarak korumalı; açmak için
 `@Public()`. Rol kontrolü `@Roles(Role.ADMIN)` ile; reddedilen istek denetim
@@ -171,6 +174,14 @@ bulunamadı) doğru HTTP koduna çevriliyor.
 **Loglama.** pino, yapılandırılmış JSON. Her isteğe `x-request-id` (gelen başlık
 varsa benimsenir), doğrulanmış isteklere `userId` düşüyor. Statü koduna göre
 seviye. Token ve cookie redact ediliyor.
+
+İstek logu her satırda IP ve istemci bilgisi taşır; bu kasıtlı, 5651 kapsamındaki
+bir yer sağlayıcı için trafik bilgisi zaten saklanması zorunlu alandır. Çıktı
+`stdout`'a yazılır — saklama süresi, kaydın bütünlüğü ve erişim kontrolü
+deployment'ın işi. Denetim satırındaki IP meşru menfaate dayanır ve silme
+talebiyle temizlenir, trafik logu ise kanuni saklama sebebine dayanır ve süre
+dolmadan silinmez; `requestId` ikisini yalnızca logları arşivlediğin kurulumda
+birbirine bağlar.
 
 **OpenAPI.** Şemalardan üretiliyor, isimli component'ler ve temiz
 `operationId`'lerle — `openapi-typescript` gibi araçlarla doğrudan istemci tipi
