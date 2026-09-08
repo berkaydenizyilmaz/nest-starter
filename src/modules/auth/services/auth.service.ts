@@ -123,7 +123,6 @@ export class AuthService implements OnModuleInit {
         actorId: user?.id,
         targetType: user ? AUDIT_TARGET.USER : undefined,
         targetId: user?.id,
-        // Without a matching user there is no id; the attempted address is the only trail.
         metadata: user ? undefined : { email: input.email },
       });
 
