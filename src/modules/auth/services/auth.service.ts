@@ -125,7 +125,6 @@ export class AuthService implements OnModuleInit {
         subjectId: user?.id,
         targetType: user ? AUDIT_TARGET.USER : undefined,
         targetId: user?.id,
-        metadata: user ? undefined : { email: input.email },
       });
 
       throw new UnauthorizedError(

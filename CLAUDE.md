@@ -127,6 +127,10 @@ spec içinde benzersiz olmalı. Fiil + kaynak yaz (`listSessions`, `revokeSessio
 - Kişisel veri tutan her modül kendi `anonymize(id, tx)` metodunu açar. Yeni PII
   kolonunun temizliğini oraya bir satır olarak gir — unutursan iz sessizce geri
   gelir.
+- `actorId` kim yaptı, `subjectId` kimin hakkında, `target*` neye dokunuldu.
+  `subjectId` elle verilir — vermezsen olay kullanıcının güvenlik günlüğüne düşmez.
+- `metadata` makine okuru taşır: enum, sayı, id, sebep kodu. Ham kullanıcı girdisi
+  girmez; kişisel verinin yeri ayrılmış kolonlar ya da modülün kendi tablosudur.
 
 ## Tuzaklar
 

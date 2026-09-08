@@ -50,7 +50,7 @@ export class AuditLogService {
   ): Promise<void> {
     await client.auditLog.updateMany({
       where: { actorId },
-      data: { ip: null, userAgent: null, metadata: Prisma.DbNull },
+      data: { ip: null, userAgent: null },
     });
   }
 
