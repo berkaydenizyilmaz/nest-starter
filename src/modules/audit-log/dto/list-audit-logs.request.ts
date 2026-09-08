@@ -7,6 +7,7 @@ export const listAuditLogsRequestSchema = offsetPageRequestSchema
     event: z.string().min(1).optional(),
     outcome: z.enum(AuditOutcome).optional(),
     actorId: z.uuid().optional(),
+    subjectId: z.uuid().optional(),
     targetType: z.string().min(1).optional(),
     targetId: z.string().min(1).optional(),
     from: z.iso.datetime().optional(),

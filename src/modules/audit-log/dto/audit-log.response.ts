@@ -9,6 +9,7 @@ export const auditLogResponseSchema = z
     event: z.string(),
     outcome: z.enum(AuditOutcome),
     actorId: z.string().nullable(),
+    subjectId: z.string().nullable(),
     targetType: z.string().nullable(),
     targetId: z.string().nullable(),
     metadata: z.unknown().nullable(),

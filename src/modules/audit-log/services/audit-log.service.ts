@@ -30,12 +30,12 @@ export class AuditLogService {
     return buildOffsetPage(rows, query, total);
   }
 
-  async findAllByActor(
-    actorId: string,
+  async findAllBySubject(
+    subjectId: string,
     query: CursorPageRequest,
   ): Promise<CursorPage<AuditLog>> {
     const rows = await this.prisma.auditLog.findMany({
-      where: { actorId },
+      where: { subjectId },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: query.limit + 1,
       ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
@@ -63,6 +63,7 @@ export class AuditLogService {
       ...(query.event ? { event: query.event } : {}),
       ...(query.outcome ? { outcome: query.outcome } : {}),
       ...(query.actorId ? { actorId: query.actorId } : {}),
+      ...(query.subjectId ? { subjectId: query.subjectId } : {}),
       ...(query.targetType ? { targetType: query.targetType } : {}),
       ...(query.targetId ? { targetId: query.targetId } : {}),
       ...(Object.keys(createdAt).length > 0 ? { createdAt } : {}),

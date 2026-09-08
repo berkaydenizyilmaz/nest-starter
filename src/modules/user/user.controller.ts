@@ -54,7 +54,7 @@ export class UserController {
     @CurrentUser('id') userId: string,
     @Query({ schema: cursorPageRequestSchema }) query: CursorPageRequest,
   ): Promise<SecurityLogPageResponseInput> {
-    return this.auditLogs.findAllByActor(userId, query);
+    return this.auditLogs.findAllBySubject(userId, query);
   }
 
   @Delete('me')
