@@ -13,13 +13,16 @@ declare module 'nestjs-cls' {
 }
 
 const REQUEST_ID_HEADER = 'x-request-id';
+const REQUEST_ID_PATTERN = /^[A-Za-z0-9._-]{1,128}$/;
 const DEVICE_HEADER = 'x-device-name';
 const DEVICE_MAX_LENGTH = 100;
 const USER_AGENT_MAX_LENGTH = 256;
 
 function incomingRequestId(request: Request): string | undefined {
   const header = request.headers[REQUEST_ID_HEADER];
-  return typeof header === 'string' && header.length > 0 ? header : undefined;
+  return typeof header === 'string' && REQUEST_ID_PATTERN.test(header)
+    ? header
+    : undefined;
 }
 
 function clamp(value: string | undefined, max: number): string | undefined {
