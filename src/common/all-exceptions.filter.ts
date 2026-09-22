@@ -143,6 +143,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
       };
     }
 
+    if (isExposedClientError(exception)) {
+      return {
+        statusCode: exception.status,
+        code: HttpStatus[exception.status] ?? `HTTP_${exception.status}`,
+        message: exception.message,
+        unexpected: false,
+      };
+    }
+
     return {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       code: COMMON_ERROR.INTERNAL_ERROR,
@@ -160,4 +169,18 @@ function extractMessage(exception: HttpException): string {
   if (typeof message === 'string') return message;
   if (Array.isArray(message)) return message.join('; ');
   return exception.message;
+}
+
+function isExposedClientError(
+  exception: unknown,
+): exception is Error & { status: number } {
+  return (
+    exception instanceof Error &&
+    'expose' in exception &&
+    exception.expose === true &&
+    'status' in exception &&
+    typeof exception.status === 'number' &&
+    exception.status >= HttpStatus.BAD_REQUEST &&
+    exception.status < HttpStatus.INTERNAL_SERVER_ERROR
+  );
 }
