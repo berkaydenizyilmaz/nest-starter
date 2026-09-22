@@ -70,9 +70,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
 
     const described = this.describe(exception);
+    const requestLogged = this.cls.isActive();
 
     if (described.unexpected) {
       this.logger.error({ err: exception }, described.message);
+    } else if (requestLogged) {
+      this.logger.assign({
+        errorCode: described.code,
+        errorMessage: described.message,
+      });
     } else {
       this.logger.warn(
         { statusCode: described.statusCode, code: described.code },
