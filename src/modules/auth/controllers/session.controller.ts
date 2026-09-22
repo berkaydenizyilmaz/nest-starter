@@ -50,7 +50,7 @@ export class SessionController {
     @Param('id', { schema: z.uuid() }) id: string,
     @CurrentUser('id') userId: string,
   ): Promise<void> {
-    return this.sessions.revokeById(id, userId);
+    return this.sessions.revokeById({ sessionId: id, userId });
   }
 
   @Delete()
