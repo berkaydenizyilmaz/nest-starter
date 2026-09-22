@@ -3,8 +3,9 @@
 ## Yapı
 
 `core/` altyapıdır ve domain bilgisi içermez. `common/` modüllerin paylaştığı
-kelime dağarcığıdır. `modules/<ad>/` iş mantığıdır — yeni modül yazarken
-`modules/auth/`'a bak.
+kelime dağarcığıdır. `modules/<ad>/` iş mantığıdır. Kod yazım stili, dosya
+düzeni ve adlandırma için `modules/auth/`'a bak; o modül her senaryonun şablonu
+değil. Örnek ile kural çeliştiğinde bu dosya geçerlidir.
 
 **Dosya adı türü söyler, klasör 2+ olunca gruplar.** DTO'lar istisna: `dto/` her
 zaman ayrı, 4+ olunca `dto/request/` ve `dto/response/`. Klasör adı sınıfların
@@ -39,8 +40,9 @@ Paylaşılan yardımcı için de asla; o `common/`'a taşınır.
 - Yan yana aynı tipte iki parametre varsa girdiyi tek nesneye topla.
 - İstek bilgisi (`requestId`, `ip`, `userAgent`, `userId`) parametreyle taşınmaz;
   servis `ClsService`'ten okur.
-- Yazan servis metodu son parametrede `Prisma.TransactionClient` alır;
-  varsayılansızsa yalnızca bir transaction içinde anlamlıdır.
+- Başka bir servisin transaction'ına katılması gereken yazma metodu son
+  parametrede `Prisma.TransactionClient` alır; varsayılansızsa yalnızca bir
+  transaction içinde anlamlıdır.
 - Servislerde `PinoLogger`, hata `logger.error({ err }, 'mesaj')` ile. Nest'in
   `Logger`'ı yalnızca DI'ın olmadığı yerde — argüman sıraları farklı.
 
@@ -75,8 +77,10 @@ türer. Elle yazılmış ikinci bir tanım (DTO sınıfı, `@ApiProperty`) tutma
 
 **Çıktı:**
 
-- `@SerializeOptions({ schema })` ve `@ApiOkResponse({ standardSchema })` birlikte
-  kullanılır: biri alanları ayıklar, diğeri aynı şemayı OpenAPI'ye yazar.
+- Domain nesnesi döndüren endpoint'te `@SerializeOptions({ schema })` ve
+  `@ApiOkResponse({ standardSchema })` birlikte kullanılır: biri alanları ayıklar,
+  diğeri aynı şemayı OpenAPI'ye yazar. Controller'ın kendi kurduğu nesnede (ör.
+  health) `@ApiOkResponse` yeterli.
 - Controller'ın dönüş tipi `z.input<typeof şema>` — serialize edilmeden önceki hâl
   (`Date` içerir). `z.infer` istemcinin aldığı tiptir; serializer'ı atlayan kod
   (yalnızca filter) yoksa export etme.
