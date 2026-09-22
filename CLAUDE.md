@@ -77,10 +77,10 @@ türer. Elle yazılmış ikinci bir tanım (DTO sınıfı, `@ApiProperty`) tutma
 
 **Çıktı:**
 
-- Domain nesnesi döndüren endpoint'te `@SerializeOptions({ schema })` ve
-  `@ApiOkResponse({ standardSchema })` birlikte kullanılır: biri alanları ayıklar,
-  diğeri aynı şemayı OpenAPI'ye yazar. Controller'ın kendi kurduğu nesnede (ör.
-  health) `@ApiOkResponse` yeterli.
+- `@ApiOkResponse` / `@ApiCreatedResponse` (`{ standardSchema }` ile) zorunlu;
+  yoksa istemcide cevap `unknown` olur. Domain nesnesi döndüren endpoint'te
+  yanına aynı şemayla `@SerializeOptions({ schema })` gelir: biri alanları
+  ayıklar, diğeri şemayı OpenAPI'ye yazar.
 - Controller'ın dönüş tipi `z.input<typeof şema>` — serialize edilmeden önceki hâl
   (`Date` içerir). `z.infer` istemcinin aldığı tiptir; serializer'ı atlayan kod
   (yalnızca filter) yoksa export etme.
@@ -104,8 +104,6 @@ alamaz.
 Spec, UI için değil istemci tipi üretmek için. Ölçüt: **`content` ekleyen
 decorator gerekli, eklemeyen gereksiz.**
 
-- `@ApiOkResponse` / `@ApiCreatedResponse` (`{ standardSchema }` ile) zorunlu;
-  vermezsen istemcide cevap `unknown` olur.
 - `@ApiErrors(...)` — endpoint'in gerçekten döndürebildiği hata kodları.
 - `@ApiBearerAuth()` — korumalı controller'a.
 - 204 dönen endpoint'e response decorator'ı ekleme.
@@ -151,13 +149,9 @@ spec içinde benzersiz olmalı. Fiil + kaynak yaz (`listSessions`, `revokeSessio
   OpenAPI 3.0 ise adsız parametrede `$ref` kabul etmez — swagger parametrelerin
   hepsini **sessizce düşürür** ve istemci filtreleri hiç görmez. Cevapta zorunlu,
   gövdede serbest, adlı parametrede de sorunsuz.
-- **`ThrottlerModule.forRoot([...])` dizi formunu kullanma.** `storage` alanı
-  yalnızca nesne formunda var; dizi verirsen sessizce yok sayılır.
 - **Codec (`z.codec`) kullanma.** Serializer decode yönünü çalıştırır, cevap için
   yanlış yön.
 - **`deletedAt: null` filtresini unutma.** Her sorguya elle yazılır;
   `include`/`select` ile gelen ilişkide çekilen kaydı elle kontrol et.
-- **Prisma sürümü sabit** (`7.10.0`); `latest` etiketi bir release candidate
-  gösteriyor.
 - **Prisma komutlarında `pnpm exec`**, `pnpm dlx` değil — `dlx` `latest`'i indirir
   ve farklı bir CLI gelir.
