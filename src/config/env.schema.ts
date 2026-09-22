@@ -10,7 +10,10 @@ export const envSchema = z.object({
   DATABASE_POOL_MAX: z.coerce.number().int().min(1).default(10),
 
   JWT_ACCESS_SECRET: z.string().min(32),
-  JWT_ACCESS_TTL: z.string().default('15m'),
+  JWT_ACCESS_TTL: z
+    .string()
+    .regex(/^[1-9]\d*[smhd]$/, 'Use a whole number with a unit: s, m, h or d')
+    .default('15m'),
   REFRESH_TTL_DAYS: z.coerce.number().int().positive().default(7),
 
   TRUST_PROXY: z.coerce.number().int().min(0).default(0),

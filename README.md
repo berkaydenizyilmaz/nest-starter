@@ -54,7 +54,7 @@ OpenAPI: `/api/docs` (yalnızca `NODE_ENV !== production`).
 | `NODE_ENV`                       | hayır    | `development` | `production`'da Swagger kapanır            |
 | `PORT`                           | hayır    | `3000`        |                                            |
 | `DATABASE_POOL_MAX`              | hayır    | `10`          | Havuzdaki azami bağlantı                   |
-| `JWT_ACCESS_TTL`                 | hayır    | `15m`         | Access token ömrü                          |
+| `JWT_ACCESS_TTL`                 | hayır    | `15m`         | Access token ömrü, birimli (`15m`, `1h`)   |
 | `REFRESH_TTL_DAYS`               | hayır    | `7`           | Oturum ömrü (gün)                          |
 | `TRUST_PROXY`                    | hayır    | `0`           | Güvenilen proxy hop sayısı                 |
 | `CORS_ORIGINS`                   | hayır    | boş           | Virgülle ayrılmış; boşsa CORS kapalı       |
