@@ -81,7 +81,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
       });
     } else {
       this.logger.warn(
-        { statusCode: described.statusCode, code: described.code },
+        {
+          method: request.method,
+          url: request.url,
+          statusCode: described.statusCode,
+          code: described.code,
+        },
         described.message,
       );
     }
