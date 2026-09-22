@@ -27,11 +27,9 @@ import {
   LOGIN_FAILURE_THRESHOLD,
 } from '../auth.constants.js';
 import type { AccessTokenPayload } from '../access-token.schema.js';
-import type { TokenSubject } from '../auth.types.js';
+import type { IssuedTokens, LoginResult, TokenSubject } from '../auth.types.js';
 import type { LoginRequest } from '../dto/request/login.request.js';
 import type { RegisterRequest } from '../dto/request/register.request.js';
-import type { LoginResponseInput } from '../dto/response/login.response.js';
-import type { TokenPairResponseInput } from '../dto/response/token-pair.response.js';
 import { SessionService } from './session.service.js';
 
 @Injectable()
@@ -50,7 +48,7 @@ export class AuthService implements OnModuleInit {
     this.dummyPasswordHash = await unusablePasswordHash();
   }
 
-  async register(input: RegisterRequest): Promise<TokenPairResponseInput> {
+  async register(input: RegisterRequest): Promise<IssuedTokens> {
     const passwordHash = await argon2.hash(input.password);
 
     const { user, issued } = await this.prisma.$transaction(async (tx) => {
@@ -95,7 +93,7 @@ export class AuthService implements OnModuleInit {
     };
   }
 
-  async login(input: LoginRequest): Promise<LoginResponseInput> {
+  async login(input: LoginRequest): Promise<LoginResult> {
     const user = await this.prisma.user.findUnique({
       where: { email: input.email },
     });
@@ -175,10 +173,10 @@ export class AuthService implements OnModuleInit {
       });
     }
 
-    return reactivated ? { ...tokens, reactivated: true } : tokens;
+    return { ...tokens, reactivated };
   }
 
-  async refresh(refreshToken: string): Promise<TokenPairResponseInput> {
+  async refresh(refreshToken: string): Promise<IssuedTokens> {
     const rotated = await this.sessions.rotate(refreshToken);
 
     return {
@@ -253,9 +251,7 @@ export class AuthService implements OnModuleInit {
     });
   }
 
-  private async issueTokens(
-    user: TokenSubject,
-  ): Promise<TokenPairResponseInput> {
+  private async issueTokens(user: TokenSubject): Promise<IssuedTokens> {
     const issued = await this.sessions.issue(user.id);
 
     return {
