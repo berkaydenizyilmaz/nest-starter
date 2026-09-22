@@ -272,12 +272,10 @@ Bilerek dışarıda; ihtiyaç duyan projede eklenir.
 - **ESM projesi.** Relative import'lar `.js` uzantılı olmalı.
 - **Prisma sürümü sabit** (`7.10.0`). `prisma` paketinin `latest` etiketi bir
   release candidate gösteriyor; `@latest` ile güncelleme yapma.
-- **`@nestjs/throttler` peer aralığı Nest 12'yi kapsamıyor.** Kurulum ve 429
-  davranışı doğrulandı; [#2670](https://github.com/nestjs/throttler/pulls)
-  birleşince güncelle. `app.module.ts`'teki boş `imports: []` ayrı bir sebepten:
-  paketin tipleri `@nestjs/common/interfaces`'ten import ediyor, Nest 12 o alt
-  yolu `exports` haritasında açmıyor, çözülemeyen tipin `Pick<>`'i alanı zorunlu
-  yapıyor. Yalnızca tip düzeyinde; silersen derleme kırılır.
+- **`app.module.ts`'teki boş `imports: []` kasıtlı.** `@nestjs/throttler`'ın
+  tipleri (6.7.0 dahil) `@nestjs/common/interfaces`'ten import ediyor, Nest 12 o
+  alt yolu `exports` haritasında açmıyor, çözülemeyen tipin `Pick<>`'i alanı
+  zorunlu yapıyor. Yalnızca tip düzeyinde; silersen derleme kırılır.
 - **BFF arkasındaysan** `request.ip` ve `User-Agent` o sunucunun değerleri olur;
   oturum ve denetim kayıtları bütün web kullanıcılarını aynı cihaz gibi gösterir.
   BFF gerçek `X-Forwarded-For`, `User-Agent` ve `X-Device-Name` başlıklarını
