@@ -1,5 +1,13 @@
 import { z } from 'zod';
 
+const trustedProxy = z.union([
+  z.enum(['loopback', 'linklocal', 'uniquelocal']),
+  z.ipv4(),
+  z.ipv6(),
+  z.cidrv4(),
+  z.cidrv6(),
+]);
+
 export const envSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
@@ -16,7 +24,21 @@ export const envSchema = z.object({
     .default('15m'),
   REFRESH_TTL_DAYS: z.coerce.number().int().positive().default(7),
 
-  TRUST_PROXY: z.coerce.number().int().min(0).default(0),
+  TRUST_PROXY: z
+    .union(
+      [
+        z.string().regex(/^\d+$/).transform(Number),
+        z
+          .string()
+          .transform((val) => val.split(',').map((entry) => entry.trim()))
+          .pipe(z.array(trustedProxy)),
+      ],
+      {
+        error:
+          'Use a hop count or a comma-separated list of IPs, CIDRs, loopback, linklocal or uniquelocal',
+      },
+    )
+    .default(0),
   CORS_ORIGINS: z.string().default(''),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
 

@@ -315,7 +315,7 @@ listeler.
 | `DATABASE_POOL_MAX`              | `10`          | Instance başına azami veritabanı bağlantısı                         |
 | `JWT_ACCESS_TTL`                 | `15m`         | Access token ömrü; birim zorunlu: `s`, `m`, `h`, `d`                |
 | `REFRESH_TTL_DAYS`               | `7`           | Oturum ömrü (gün)                                                   |
-| `TRUST_PROXY`                    | `0`           | Önündeki güvenilir proxy sayısı                                     |
+| `TRUST_PROXY`                    | `0`           | Güvenilir proxy'ler: hop sayısı ya da IP/CIDR listesi               |
 | `CORS_ORIGINS`                   | boş           | Virgülle ayrılmış origin listesi; boşsa CORS kapalı                 |
 | `LOG_LEVEL`                      | `info`        | `error` · `warn` · `info` · `debug`                                 |
 | `THROTTLE_ENABLED`               | `true`        | Rate limit açık mı                                                  |
@@ -341,10 +341,14 @@ Saatler `Europe/Istanbul` saat dilimindedir
 
 - **`TRUST_PROXY`'ye asla `true` verme.** İstemci `X-Forwarded-For` göndererek
   IP'sini sahteleyebilir; bu oturum ve denetim kayıtlarını ve IP'ye dayalı rate
-  limit'i zehirler. Reverse proxy arkasındaysan zincirdeki proxy sayısını yaz
-  (genelde `1`). Proxy arkasında `0` bırakırsan bütün istemciler proxy'nin
+  limit'i zehirler. Proxy arkasında `0` bırakırsan bütün istemciler proxy'nin
   IP'sini paylaşır ve `/auth/login` herkes için toplam dakikada 5 istekle
-  sınırlanır.
+  sınırlanır. İki biçim var:
+  - **Hop sayısı** (`1`, `2`…): Bütün istekler aynı proxy zincirinden geliyorsa.
+  - **IP/CIDR listesi** (`10.0.0.0/8, 127.0.0.1`; `loopback`, `linklocal`,
+    `uniquelocal` adları da geçer): İstekler farklı yollardan geliyorsa, ör. web
+    BFF ve proxy üzerinden, mobil yalnızca proxy üzerinden. Express, zincirde
+    listede olmayan ilk adresi istemci IP'si sayar; sahte başlık işe yaramaz.
 - **Birden fazla replika:** `CRON_ENABLED`'ı yalnızca birinde açık bırak; yoksa
   her replika aynı işi çalıştırır. Rate limit sayaçları süreç belleğindedir ve
   her replika kendi sayacını tutar; paylaşımlı bir sayaç için
@@ -353,9 +357,10 @@ Saatler `Europe/Istanbul` saat dilimindedir
 - **Veritabanı bağlantıları:** Toplam bağlantı `DATABASE_POOL_MAX` × instance
   sayısıdır ve veritabanının `max_connections` değerini aşmamalı.
 - **BFF arkasındaysan** (ör. Next.js sunucusu) BFF gerçek `X-Forwarded-For`,
-  `User-Agent` ve `X-Device-Name` başlıklarını iletmeli ve `TRUST_PROXY`
-  zincirdeki proxy sayısına eşit olmalı; yoksa bütün kullanıcılar aynı cihaz ve
-  aynı IP görünür.
+  `User-Agent` ve `X-Device-Name` başlıklarını iletmeli ve BFF'nin adresi
+  `TRUST_PROXY` listesinde olmalı; yoksa bütün kullanıcılar aynı cihaz ve aynı
+  IP görünür. Liste yöntemi BFF'nin adresi bilindiğinde çalışır (aynı sunucu ya
+  da özel ağ); çıkış IP'si değişen bir platformda (ör. Vercel) çalışmaz.
 - **Kapanış:** `SIGTERM` gelince yeni istek kabul edilmez, süren işler
   tamamlanır ve bağlantılar kapanır. 10 saniyede bitmezse süreç kendini
   sonlandırır, platformun `SIGKILL`'ini beklemez.
