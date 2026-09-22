@@ -128,52 +128,64 @@ export class AuthService implements OnModuleInit {
     const reactivated = user.deletedAt !== null;
     const now = new Date();
 
-    const signedIn = await this.prisma.user.updateMany({
-      where: {
-        id: user.id,
-        anonymizedAt: null,
-        OR: [{ lockedUntil: null }, { lockedUntil: { lte: now } }],
-      },
-      data: {
-        lastLoginAt: now,
-        deletedAt: null,
-        failedLoginCount: 0,
-        lockedUntil: null,
-      },
+    const issued = await this.prisma.$transaction(async (tx) => {
+      const signedIn = await tx.user.updateMany({
+        where: {
+          id: user.id,
+          anonymizedAt: null,
+          OR: [{ lockedUntil: null }, { lockedUntil: { lte: now } }],
+        },
+        data: {
+          lastLoginAt: now,
+          deletedAt: null,
+          failedLoginCount: 0,
+          lockedUntil: null,
+        },
+      });
+
+      if (signedIn.count === 0) {
+        const current = await tx.user.findUnique({
+          where: { id: user.id },
+          select: { lockedUntil: true },
+        });
+        const nowLockedFor = remainingLockSeconds(current?.lockedUntil ?? null);
+        throw nowLockedFor > 0
+          ? accountLockedError(nowLockedFor)
+          : invalidCredentialsError();
+      }
+
+      await this.audit.record(
+        {
+          event: AUTH_AUDIT.AUTHN_LOGIN,
+          actorId: user.id,
+          subjectId: user.id,
+          targetType: AUDIT_TARGET.USER,
+          targetId: user.id,
+        },
+        tx,
+      );
+
+      if (reactivated) {
+        await this.audit.record(
+          {
+            event: AUTH_AUDIT.USER_REACTIVATED,
+            actorId: user.id,
+            subjectId: user.id,
+            targetType: AUDIT_TARGET.USER,
+            targetId: user.id,
+          },
+          tx,
+        );
+      }
+
+      return this.sessions.issue(user.id, tx);
     });
 
-    if (signedIn.count === 0) {
-      const current = await this.prisma.user.findUnique({
-        where: { id: user.id },
-        select: { lockedUntil: true },
-      });
-      const nowLockedFor = remainingLockSeconds(current?.lockedUntil ?? null);
-      throw nowLockedFor > 0
-        ? accountLockedError(nowLockedFor)
-        : invalidCredentialsError();
-    }
-
-    const tokens = await this.issueTokens(user);
-
-    await this.audit.record({
-      event: AUTH_AUDIT.AUTHN_LOGIN,
-      actorId: user.id,
-      subjectId: user.id,
-      targetType: AUDIT_TARGET.USER,
-      targetId: user.id,
-    });
-
-    if (reactivated) {
-      await this.audit.record({
-        event: AUTH_AUDIT.USER_REACTIVATED,
-        actorId: user.id,
-        subjectId: user.id,
-        targetType: AUDIT_TARGET.USER,
-        targetId: user.id,
-      });
-    }
-
-    return { ...tokens, reactivated };
+    return {
+      accessToken: await this.signAccessToken(user, issued.sessionId),
+      refreshToken: issued.token,
+      reactivated,
+    };
   }
 
   async refresh(refreshToken: string): Promise<IssuedTokens> {
@@ -186,15 +198,20 @@ export class AuthService implements OnModuleInit {
   }
 
   async logout(refreshToken: string): Promise<void> {
-    const revoked = await this.sessions.revokeByToken(refreshToken);
-    if (!revoked) return;
+    await this.prisma.$transaction(async (tx) => {
+      const revoked = await this.sessions.revokeByToken(refreshToken, tx);
+      if (!revoked) return;
 
-    await this.audit.record({
-      event: AUTH_AUDIT.AUTHN_LOGOUT,
-      actorId: revoked.userId,
-      subjectId: revoked.userId,
-      targetType: AUDIT_TARGET.SESSION,
-      targetId: revoked.id,
+      await this.audit.record(
+        {
+          event: AUTH_AUDIT.AUTHN_LOGOUT,
+          actorId: revoked.userId,
+          subjectId: revoked.userId,
+          targetType: AUDIT_TARGET.SESSION,
+          targetId: revoked.id,
+        },
+        tx,
+      );
     });
   }
 
@@ -249,15 +266,6 @@ export class AuthService implements OnModuleInit {
         tx,
       );
     });
-  }
-
-  private async issueTokens(user: TokenSubject): Promise<IssuedTokens> {
-    const issued = await this.sessions.issue(user.id);
-
-    return {
-      accessToken: await this.signAccessToken(user, issued.sessionId),
-      refreshToken: issued.token,
-    };
   }
 
   private signAccessToken(

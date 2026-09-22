@@ -134,8 +134,9 @@ export class SessionService {
 
   async revokeByToken(
     refreshToken: string,
+    client: Prisma.TransactionClient = this.prisma,
   ): Promise<{ id: string; userId: string } | null> {
-    const [revoked] = await this.prisma.session.updateManyAndReturn({
+    const [revoked] = await client.session.updateManyAndReturn({
       where: {
         revokedAt: null,
         refreshTokens: {
@@ -156,23 +157,28 @@ export class SessionService {
     sessionId: string;
     userId: string;
   }): Promise<void> {
-    const revoked = await this.prisma.session.updateMany({
-      where: { id: sessionId, userId, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
+    await this.prisma.$transaction(async (tx) => {
+      const revoked = await tx.session.updateMany({
+        where: { id: sessionId, userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
 
-    if (revoked.count === 0) {
-      throw new NotFoundError(
-        AUTH_ERROR.SESSION_NOT_FOUND,
-        'Session not found',
+      if (revoked.count === 0) {
+        throw new NotFoundError(
+          AUTH_ERROR.SESSION_NOT_FOUND,
+          'Session not found',
+        );
+      }
+
+      await this.audit.record(
+        {
+          event: AUTH_AUDIT.SESSION_REVOKED,
+          subjectId: userId,
+          targetType: AUDIT_TARGET.SESSION,
+          targetId: sessionId,
+        },
+        tx,
       );
-    }
-
-    await this.audit.record({
-      event: AUTH_AUDIT.SESSION_REVOKED,
-      subjectId: userId,
-      targetType: AUDIT_TARGET.SESSION,
-      targetId: sessionId,
     });
   }
 
@@ -235,16 +241,21 @@ export class SessionService {
   }
 
   private async rejectReuse(userId: string): Promise<never> {
-    await this.audit.record({
-      event: AUTH_AUDIT.SESSION_TOKEN_REUSE,
-      outcome: AuditOutcome.FAILURE,
-      actorId: userId,
-      subjectId: userId,
-      targetType: AUDIT_TARGET.USER,
-      targetId: userId,
+    await this.prisma.$transaction(async (tx) => {
+      await this.audit.record(
+        {
+          event: AUTH_AUDIT.SESSION_TOKEN_REUSE,
+          outcome: AuditOutcome.FAILURE,
+          actorId: userId,
+          subjectId: userId,
+          targetType: AUDIT_TARGET.USER,
+          targetId: userId,
+        },
+        tx,
+      );
+      await this.revokeAll(userId, tx);
     });
 
-    await this.revokeAll(userId);
     throw new UnauthorizedError(
       AUTH_ERROR.REFRESH_TOKEN_REUSED,
       'Refresh token was already used',

@@ -126,6 +126,9 @@ spec içinde benzersiz olmalı. Fiil + kaynak yaz (`listSessions`, `revokeSessio
 
 - Kayıt `core/audit`'teki `AuditService.record()` ile yazılır, okuma
   `modules/audit-log`'un işi. Tabloya doğrudan yazma.
+- Durum değiştiren işlem ile onun audit kaydı aynı transaction'da yazılır.
+  Durum değiştirmeyen olay (yetki reddi, var olmayan hesaba giriş denemesi) tek
+  başına yazılır.
 - Olay adları modülün `<ad>.constants.ts`'inde sabittir; `core/` olay adı bilmez,
   böylece yeni modül audit koduna dokunmadan kendi olaylarını ekler.
 - Kişisel veri tutan her modül kendi `anonymize(id, tx)` metodunu açar. Yeni PII
