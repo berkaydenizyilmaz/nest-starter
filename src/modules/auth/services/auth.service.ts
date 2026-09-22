@@ -135,8 +135,8 @@ export class AuthService implements OnModuleInit {
 
     const reactivated = user.deletedAt !== null;
 
-    await this.prisma.user.update({
-      where: { id: user.id },
+    const signedIn = await this.prisma.user.updateMany({
+      where: { id: user.id, anonymizedAt: null },
       data: {
         lastLoginAt: new Date(),
         deletedAt: null,
@@ -144,6 +144,13 @@ export class AuthService implements OnModuleInit {
         lockedUntil: null,
       },
     });
+
+    if (signedIn.count === 0) {
+      throw new UnauthorizedError(
+        AUTH_ERROR.INVALID_CREDENTIALS,
+        'Invalid email or password',
+      );
+    }
 
     const tokens = await this.issueTokens(user);
 

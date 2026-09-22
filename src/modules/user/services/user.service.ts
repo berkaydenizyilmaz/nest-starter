@@ -55,15 +55,22 @@ export class UserService {
 
   async anonymize(
     userId: string,
+    deletedBefore: Date,
     client: Prisma.TransactionClient,
-  ): Promise<void> {
-    await client.user.update({
-      where: { id: userId },
+  ): Promise<boolean> {
+    const anonymized = await client.user.updateMany({
+      where: {
+        id: userId,
+        deletedAt: { lt: deletedBefore },
+        anonymizedAt: null,
+      },
       data: {
         email: `anonymized-${userId}@invalid`,
         passwordHash: await unusablePasswordHash(),
         anonymizedAt: new Date(),
       },
     });
+
+    return anonymized.count > 0;
   }
 }

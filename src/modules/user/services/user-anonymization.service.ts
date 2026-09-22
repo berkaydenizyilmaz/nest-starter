@@ -74,10 +74,12 @@ export class UserAnonymizationService {
 
     for (const { id } of users) {
       try {
-        await this.prisma.$transaction(async (tx) => {
+        const anonymized = await this.prisma.$transaction(async (tx) => {
+          const due = await this.users.anonymize(id, threshold, tx);
+          if (!due) return false;
+
           await this.sessions.anonymize(id, tx);
           await this.auditLogs.anonymize(id, tx);
-          await this.users.anonymize(id, tx);
 
           await this.audit.record(
             {
@@ -88,8 +90,9 @@ export class UserAnonymizationService {
             },
             tx,
           );
+          return true;
         });
-        processed++;
+        if (anonymized) processed++;
       } catch (error) {
         this.logger.error({ err: error }, `Failed to anonymize user ${id}`);
       }
