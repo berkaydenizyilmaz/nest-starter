@@ -110,10 +110,19 @@ dağarcığıdır, iş mantığı `modules/` altındadır. Ayrıntılı kurallar
 
 **Auth.** Kayıt, giriş, çıkış. Access token JWT ve yalnızca `sub`, `role`, `sid`
 taşır — e-posta gibi kişisel veri token'a girmez. Refresh token opaque,
-veritabanında hash'li ve her kullanımda döndürülüyor. İptal edilmiş bir token
-tekrar sunulursa çalınma sayılıp o kullanıcının tüm oturumları kapanıyor; ama 30
-saniyelik bir tolerans penceresi var ki iki sekme aynı anda yenileme yaparsa
-kullanıcı atılmasın.
+veritabanında hash'li ve her kullanımda döndürülüyor. Bir oturumun verdiği bütün
+refresh token'lar `RefreshToken` tablosunda bir aile olarak tutulur; kullanılmış
+bir token tekrar sunulursa çalınma sayılıp o kullanıcının tüm oturumları
+kapanıyor. Bu tespit yalnızca bir önceki token'ı değil, oturum ömrü boyunca
+verilmiş hepsini kapsar.
+
+Tespitin 30 saniyelik bir tolerans penceresi var: iki sekme aynı token'la aynı
+anda yenileme yaparsa ikincisi hata almaz, bir **kardeş** token alır ve ikisi de
+geçerli kalır. Kardeşlerden biri kullanıldığında diğeri silinir; elinde kalan
+sekme `401 INVALID_REFRESH_TOKEN` alır ama bu tekrar kullanım sayılmaz, oturumlar
+kapanmaz. Pencere OAuth 2.0 Security BCP'nin (RFC 9700) önerdiği rotasyonun
+yaygın bir esnetmesidir (Okta varsayılanı 30 sn, Supabase 10 sn); bedeli, token'ı
+pencere içinde çalan birinin tespit edilmeden kardeş token alabilmesidir.
 
 Refresh token cevap gövdesinde döner; nerede saklanacağı istemcinin işidir.
 Sunucu tarafı olan bir web istemcisinde (Next.js gibi) token o sunucuda kalmalı,

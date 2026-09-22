@@ -21,7 +21,6 @@ import {
   AUTH_AUDIT,
   AUTH_ERROR,
   MAX_ACTIVE_SESSIONS,
-  MAX_ROTATE_ATTEMPTS,
   REFRESH_TOKEN_BYTES,
   ROTATION_GRACE_MS,
 } from '../auth.constants.js';
@@ -44,11 +43,11 @@ export class SessionService {
     const session = await client.session.create({
       data: {
         userId,
-        tokenHash: hashToken(token),
         expiresAt: this.expiryDate(),
         ip: this.cls.get('ip'),
         userAgent: this.cls.get('userAgent'),
         device: this.cls.get('device'),
+        refreshTokens: { create: { tokenHash: hashToken(token) } },
       },
     });
 
@@ -60,22 +59,89 @@ export class SessionService {
   async rotate(
     refreshToken: string,
   ): Promise<{ token: string; user: User; sessionId: string }> {
-    for (let attempt = 0; attempt < MAX_ROTATE_ATTEMPTS; attempt += 1) {
-      const rotated = await this.tryRotate(refreshToken);
-      if (rotated) return rotated;
+    const stored = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash: hashToken(refreshToken) },
+      include: { session: { include: { user: true } } },
+    });
+
+    if (!stored) {
+      throw new UnauthorizedError(
+        AUTH_ERROR.INVALID_REFRESH_TOKEN,
+        'Refresh token is invalid',
+      );
     }
 
-    throw new UnauthorizedError(
-      AUTH_ERROR.INVALID_REFRESH_TOKEN,
-      'Refresh token is invalid',
-    );
+    const { session } = stored;
+
+    if (session.revokedAt) {
+      throw sessionRevokedError();
+    }
+
+    if (stored.usedAt && !withinGraceWindow(stored.usedAt)) {
+      await this.rejectReuse(session.userId);
+    }
+
+    if (session.expiresAt <= new Date()) {
+      throw new UnauthorizedError(
+        AUTH_ERROR.REFRESH_TOKEN_EXPIRED,
+        'Refresh token has expired',
+      );
+    }
+
+    if (session.user.deletedAt) {
+      throw new UnauthorizedError(
+        AUTH_ERROR.ACCOUNT_DELETED,
+        'Account is no longer active',
+      );
+    }
+
+    const token = this.createToken();
+    const now = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.refreshToken.updateMany({
+        where: { id: stored.id, usedAt: null },
+        data: { usedAt: now },
+      });
+
+      if (claimed.count > 0) {
+        await tx.refreshToken.deleteMany({
+          where: { sessionId: session.id, usedAt: null },
+        });
+      }
+
+      await tx.refreshToken.create({
+        data: { sessionId: session.id, tokenHash: hashToken(token) },
+      });
+
+      const touched = await tx.session.updateMany({
+        where: { id: session.id, revokedAt: null },
+        data: {
+          lastUsedAt: now,
+          ip: this.cls.get('ip') ?? session.ip,
+          userAgent: this.cls.get('userAgent') ?? session.userAgent,
+          device: this.cls.get('device') ?? session.device,
+        },
+      });
+
+      if (touched.count === 0) {
+        throw sessionRevokedError();
+      }
+    });
+
+    return { token, user: session.user, sessionId: session.id };
   }
 
   async revokeByToken(
     refreshToken: string,
   ): Promise<{ id: string; userId: string } | null> {
     const [revoked] = await this.prisma.session.updateManyAndReturn({
-      where: { tokenHash: hashToken(refreshToken), revokedAt: null },
+      where: {
+        revokedAt: null,
+        refreshTokens: {
+          some: { tokenHash: hashToken(refreshToken), usedAt: null },
+        },
+      },
       data: { revokedAt: new Date() },
       select: { id: true, userId: true },
     });
@@ -162,68 +228,6 @@ export class SessionService {
     });
   }
 
-  private async tryRotate(
-    refreshToken: string,
-  ): Promise<{ token: string; user: User; sessionId: string } | null> {
-    const hash = hashToken(refreshToken);
-    const session = await this.prisma.session.findFirst({
-      where: { OR: [{ tokenHash: hash }, { previousHash: hash }] },
-      include: { user: true },
-    });
-
-    if (!session) {
-      throw new UnauthorizedError(
-        AUTH_ERROR.INVALID_REFRESH_TOKEN,
-        'Refresh token is invalid',
-      );
-    }
-
-    if (session.revokedAt) {
-      throw new UnauthorizedError(
-        AUTH_ERROR.SESSION_REVOKED,
-        'Session has been revoked',
-      );
-    }
-
-    if (session.previousHash === hash && !this.withinGraceWindow(session)) {
-      await this.rejectReuse(session.userId);
-    }
-
-    if (session.expiresAt <= new Date()) {
-      throw new UnauthorizedError(
-        AUTH_ERROR.REFRESH_TOKEN_EXPIRED,
-        'Refresh token has expired',
-      );
-    }
-
-    if (session.user.deletedAt) {
-      throw new UnauthorizedError(
-        AUTH_ERROR.ACCOUNT_DELETED,
-        'Account is no longer active',
-      );
-    }
-
-    const token = this.createToken();
-    const now = new Date();
-
-    const updated = await this.prisma.session.updateMany({
-      where: { id: session.id, tokenHash: session.tokenHash, revokedAt: null },
-      data: {
-        tokenHash: hashToken(token),
-        previousHash: session.tokenHash,
-        rotatedAt: now,
-        lastUsedAt: now,
-        ip: this.cls.get('ip') ?? session.ip,
-        userAgent: this.cls.get('userAgent') ?? session.userAgent,
-        device: this.cls.get('device') ?? session.device,
-      },
-    });
-
-    return updated.count === 0
-      ? null
-      : { token, user: session.user, sessionId: session.id };
-  }
-
   private async rejectReuse(userId: string): Promise<never> {
     await this.audit.record({
       event: AUTH_AUDIT.SESSION_TOKEN_REUSE,
@@ -241,11 +245,6 @@ export class SessionService {
     );
   }
 
-  private withinGraceWindow(session: Session): boolean {
-    if (!session.rotatedAt) return false;
-    return Date.now() - session.rotatedAt.getTime() <= ROTATION_GRACE_MS;
-  }
-
   private createToken(): string {
     return randomBytes(REFRESH_TOKEN_BYTES).toString('base64url');
   }
@@ -258,4 +257,15 @@ export class SessionService {
 
 function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
+}
+
+function withinGraceWindow(usedAt: Date): boolean {
+  return Date.now() - usedAt.getTime() <= ROTATION_GRACE_MS;
+}
+
+function sessionRevokedError(): UnauthorizedError {
+  return new UnauthorizedError(
+    AUTH_ERROR.SESSION_REVOKED,
+    'Session has been revoked',
+  );
 }
