@@ -18,9 +18,10 @@ model User {
   passwordHash String
   role         Role   @default(USER)
 
-  lastLoginAt      DateTime?
-  failedLoginCount Int       @default(0)
-  lockedUntil      DateTime?
+  lastLoginAt       DateTime?
+  failedLoginCount  Int       @default(0)
+  lastFailedLoginAt DateTime?
+  lockedUntil       DateTime?
 
   deletedAt    DateTime?
   anonymizedAt DateTime?

@@ -104,18 +104,14 @@ export class AuthService implements OnModuleInit {
       input.password,
     );
 
-    const lockedFor = user ? remainingLockSeconds(user) : 0;
+    const lockedFor = user ? remainingLockSeconds(user.lockedUntil) : 0;
     if (lockedFor > 0) {
-      throw new TooManyRequestsError(
-        AUTH_ERROR.ACCOUNT_TEMPORARILY_LOCKED,
-        'Too many failed login attempts',
-        lockedFor,
-      );
+      throw accountLockedError(lockedFor);
     }
 
     if (!user || !passwordMatches) {
       if (user) {
-        await this.recordLoginFailure(user);
+        await this.recordLoginFailure(user.id);
       }
 
       await this.audit.record({
@@ -127,18 +123,20 @@ export class AuthService implements OnModuleInit {
         targetId: user?.id,
       });
 
-      throw new UnauthorizedError(
-        AUTH_ERROR.INVALID_CREDENTIALS,
-        'Invalid email or password',
-      );
+      throw invalidCredentialsError();
     }
 
     const reactivated = user.deletedAt !== null;
+    const now = new Date();
 
     const signedIn = await this.prisma.user.updateMany({
-      where: { id: user.id, anonymizedAt: null },
+      where: {
+        id: user.id,
+        anonymizedAt: null,
+        OR: [{ lockedUntil: null }, { lockedUntil: { lte: now } }],
+      },
       data: {
-        lastLoginAt: new Date(),
+        lastLoginAt: now,
         deletedAt: null,
         failedLoginCount: 0,
         lockedUntil: null,
@@ -146,10 +144,14 @@ export class AuthService implements OnModuleInit {
     });
 
     if (signedIn.count === 0) {
-      throw new UnauthorizedError(
-        AUTH_ERROR.INVALID_CREDENTIALS,
-        'Invalid email or password',
-      );
+      const current = await this.prisma.user.findUnique({
+        where: { id: user.id },
+        select: { lockedUntil: true },
+      });
+      const nowLockedFor = remainingLockSeconds(current?.lockedUntil ?? null);
+      throw nowLockedFor > 0
+        ? accountLockedError(nowLockedFor)
+        : invalidCredentialsError();
     }
 
     const tokens = await this.issueTokens(user);
@@ -197,37 +199,56 @@ export class AuthService implements OnModuleInit {
     });
   }
 
-  private async recordLoginFailure(user: User): Promise<void> {
-    const { failedLoginCount } = await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        failedLoginCount: staleFailureHistory(user) ? 1 : { increment: 1 },
-        lockedUntil: null,
-      },
-      select: { failedLoginCount: true },
-    });
+  private async recordLoginFailure(userId: string): Promise<void> {
+    const now = new Date();
 
-    const excess = failedLoginCount - LOGIN_FAILURE_THRESHOLD;
-    if (excess <= 0) return;
+    await this.prisma.$transaction(async (tx) => {
+      const previous = await tx.user.update({
+        where: { id: userId },
+        data: { failedLoginCount: { increment: 1 } },
+        select: { failedLoginCount: true, lastFailedLoginAt: true },
+      });
 
-    const backoffMs = Math.min(
-      LOGIN_BACKOFF_BASE_MS * 2 ** (excess - 1),
-      LOGIN_BACKOFF_MAX_MS,
-    );
+      const forgotten = failureHistoryForgotten(
+        previous.lastFailedLoginAt,
+        now,
+      );
+      const failedLoginCount = forgotten ? 1 : previous.failedLoginCount;
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { lockedUntil: new Date(Date.now() + backoffMs) },
-    });
+      const excess = failedLoginCount - LOGIN_FAILURE_THRESHOLD;
+      const backoffMs =
+        excess > 0
+          ? Math.min(
+              LOGIN_BACKOFF_BASE_MS * 2 ** (excess - 1),
+              LOGIN_BACKOFF_MAX_MS,
+            )
+          : 0;
 
-    await this.audit.record({
-      event: AUTH_AUDIT.AUTHN_LOGIN_LOCK,
-      outcome: AuditOutcome.FAILURE,
-      actorId: user.id,
-      subjectId: user.id,
-      targetType: AUDIT_TARGET.USER,
-      targetId: user.id,
-      metadata: { reason: 'maxretries', backoffMs },
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          failedLoginCount,
+          lastFailedLoginAt: now,
+          ...(backoffMs > 0
+            ? { lockedUntil: new Date(now.getTime() + backoffMs) }
+            : {}),
+        },
+      });
+
+      if (backoffMs === 0) return;
+
+      await this.audit.record(
+        {
+          event: AUTH_AUDIT.AUTHN_LOGIN_LOCK,
+          outcome: AuditOutcome.FAILURE,
+          actorId: userId,
+          subjectId: userId,
+          targetType: AUDIT_TARGET.USER,
+          targetId: userId,
+          metadata: { reason: 'maxretries', backoffMs },
+        },
+        tx,
+      );
     });
   }
 
@@ -256,14 +277,32 @@ export class AuthService implements OnModuleInit {
   }
 }
 
-function staleFailureHistory(user: { lockedUntil: Date | null }): boolean {
-  if (!user.lockedUntil) return false;
-  return Date.now() - user.lockedUntil.getTime() > LOGIN_FAILURE_DECAY_MS;
+function failureHistoryForgotten(
+  lastFailedLoginAt: Date | null,
+  now: Date,
+): boolean {
+  if (!lastFailedLoginAt) return true;
+  return now.getTime() - lastFailedLoginAt.getTime() > LOGIN_FAILURE_DECAY_MS;
 }
 
-function remainingLockSeconds(user: { lockedUntil: Date | null }): number {
-  if (!user.lockedUntil) return 0;
+function remainingLockSeconds(lockedUntil: Date | null): number {
+  if (!lockedUntil) return 0;
 
-  const remainingMs = user.lockedUntil.getTime() - Date.now();
+  const remainingMs = lockedUntil.getTime() - Date.now();
   return remainingMs > 0 ? Math.ceil(remainingMs / MS_PER_SECOND) : 0;
+}
+
+function accountLockedError(retryAfterSeconds: number): TooManyRequestsError {
+  return new TooManyRequestsError(
+    AUTH_ERROR.ACCOUNT_TEMPORARILY_LOCKED,
+    'Too many failed login attempts',
+    retryAfterSeconds,
+  );
+}
+
+function invalidCredentialsError(): UnauthorizedError {
+  return new UnauthorizedError(
+    AUTH_ERROR.INVALID_CREDENTIALS,
+    'Invalid email or password',
+  );
 }
