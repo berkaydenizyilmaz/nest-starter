@@ -26,6 +26,7 @@ import {
   LOGIN_FAILURE_DECAY_MS,
   LOGIN_FAILURE_THRESHOLD,
 } from '../auth.constants.js';
+import type { AccessTokenPayload } from '../access-token.schema.js';
 import type { TokenSubject } from '../auth.types.js';
 import type { LoginRequest } from '../dto/request/login.request.js';
 import type { RegisterRequest } from '../dto/request/register.request.js';
@@ -267,13 +268,16 @@ export class AuthService implements OnModuleInit {
     user: TokenSubject,
     sessionId: string,
   ): Promise<string> {
-    return this.jwt.signAsync(
-      { sub: user.id, role: user.role, sid: sessionId },
-      {
-        secret: this.config.get('JWT_ACCESS_SECRET', { infer: true }),
-        expiresIn: this.config.get('JWT_ACCESS_TTL', { infer: true }),
-      },
-    );
+    const payload: AccessTokenPayload = {
+      sub: user.id,
+      role: user.role,
+      sid: sessionId,
+    };
+
+    return this.jwt.signAsync(payload, {
+      secret: this.config.get('JWT_ACCESS_SECRET', { infer: true }),
+      expiresIn: this.config.get('JWT_ACCESS_TTL', { infer: true }),
+    });
   }
 }
 

@@ -12,7 +12,10 @@ import type { Request } from 'express';
 import type { Env } from '../../config/env.schema.js';
 import { AUTH_ERROR } from './auth.constants.js';
 import type { AuthUser } from '../../common/auth-user.type.js';
-import type { AccessTokenPayload } from './auth.types.js';
+import {
+  type AccessTokenPayload,
+  accessTokenPayloadSchema,
+} from './access-token.schema.js';
 import { IS_PUBLIC_KEY } from '../../common/decorators/public.decorator.js';
 import { UnauthorizedError } from '../../common/domain.error.js';
 
@@ -47,9 +50,10 @@ export class JwtAuthGuard implements CanActivate {
 
     let payload: AccessTokenPayload;
     try {
-      payload = await this.jwt.verifyAsync<AccessTokenPayload>(token, {
+      const verified: unknown = await this.jwt.verifyAsync(token, {
         secret: this.config.get('JWT_ACCESS_SECRET', { infer: true }),
       });
+      payload = accessTokenPayloadSchema.parse(verified);
     } catch {
       throw new UnauthorizedError(
         AUTH_ERROR.INVALID_TOKEN,
@@ -61,7 +65,7 @@ export class JwtAuthGuard implements CanActivate {
 
     const user: AuthUser = {
       id: payload.sub,
-      role: payload.role as AuthUser['role'],
+      role: payload.role,
       sessionId: payload.sid,
     };
 
@@ -74,5 +78,5 @@ export class JwtAuthGuard implements CanActivate {
 
 function extractBearerToken(request: Request): string | undefined {
   const [scheme, token] = request.headers.authorization?.split(' ') ?? [];
-  return scheme === 'Bearer' && token ? token : undefined;
+  return scheme?.toLowerCase() === 'bearer' && token ? token : undefined;
 }

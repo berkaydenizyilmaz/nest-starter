@@ -1,10 +1,6 @@
-export interface AccessTokenPayload {
-  sub: string;
-  role: string;
-  sid: string;
-}
+import type { Role } from '../../generated/prisma/client.js';
 
 export interface TokenSubject {
   id: string;
-  role: string;
+  role: Role;
 }
