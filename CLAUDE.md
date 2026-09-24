@@ -89,8 +89,12 @@
 
 ## Asenkron işler
 
-- Dış bir servise giden ve başarısız olabilen iş (mail, bildirim, aktarım)
-  istek içinde değil kuyrukta yapılır.
+- Dış bir servise giden, başarısız olabilen ve sonucunu kullanıcının
+  beklemediği iş (mail, bildirim, aktarım) istek içinde değil kuyrukta yapılır.
+- Sonucunu kullanıcının beklediği iş (yüklenen dosyanın doğrulanması) istekte
+  yapılır, hata o an döner; tekrar deneyen kullanıcıdır. Kuyruğa atılırsa
+  başarısızlık kullanıcı ekrandan ayrıldıktan sonra ortaya çıkar. Böyle bir
+  istekteki dış çağrının zaman aşımı ve tekrar sayısı kısa tutulur.
 - İş en az bir kez çalışır; handler tekrar çalıştığında zarar vermemeli.
 - Payload yalnızca id taşır; worker veriyi kendisi okur.
 - Kullanıcının elle tekrarlayabildiği bir işin tekrar denemeleri, kullanıcıya
