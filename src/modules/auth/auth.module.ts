@@ -5,7 +5,8 @@ import { AuthService } from './services/auth.service.js';
 import { SessionController } from './controllers/session.controller.js';
 import { PasswordService } from './services/password.service.js';
 import { SessionService } from './services/session.service.js';
-import { SessionCleanupService } from './services/session-cleanup.service.js';
+import { PasswordResetMailHandler } from './jobs/password-reset-mail.handler.js';
+import { SessionCleanupHandler } from './jobs/session-cleanup.handler.js';
 
 @Module({
   imports: [JwtModule.register({ global: true })],
@@ -14,7 +15,8 @@ import { SessionCleanupService } from './services/session-cleanup.service.js';
     AuthService,
     PasswordService,
     SessionService,
-    SessionCleanupService,
+    PasswordResetMailHandler,
+    SessionCleanupHandler,
   ],
   exports: [SessionService],
 })

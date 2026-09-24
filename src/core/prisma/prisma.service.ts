@@ -1,6 +1,6 @@
 import {
   Injectable,
-  type OnModuleDestroy,
+  type OnApplicationShutdown,
   type OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -13,7 +13,7 @@ const CONNECTION_TIMEOUT_MS = 5000;
 @Injectable()
 export class PrismaService
   extends PrismaClient
-  implements OnModuleInit, OnModuleDestroy
+  implements OnModuleInit, OnApplicationShutdown
 {
   constructor(config: ConfigService<Env, true>) {
     super({
@@ -29,7 +29,7 @@ export class PrismaService
     await this.$connect();
   }
 
-  async onModuleDestroy(): Promise<void> {
+  async onApplicationShutdown(): Promise<void> {
     await this.$disconnect();
   }
 }

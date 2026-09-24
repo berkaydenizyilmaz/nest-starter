@@ -21,7 +21,7 @@ sen yalnızca kendi modüllerini eklersin.
 - [Mail](#mail)
 - [Loglama ve istek bağlamı](#loglama-ve-istek-bağlamı)
 - [Yapılandırma](#yapılandırma)
-- [Zamanlanmış işler](#zamanlanmış-işler)
+- [Arka plan işleri](#arka-plan-işleri)
 - [Yayına alma](#yayına-alma)
 - [Komutlar](#komutlar)
 - [Kapsam dışı](#kapsam-dışı)
@@ -64,6 +64,7 @@ src/
 │   ├── prisma/          PrismaService
 │   ├── audit/           AuditService: denetim kaydı yazıcısı
 │   ├── mail/            MailService ve sürücüleri (console, resend)
+│   ├── queue/           pg-boss kuyruğu: QueueService, iş keşfi, zamanlamalar
 │   ├── logger.module.ts
 │   └── request-context.module.ts
 ├── common/          Modüllerin ortak dili: hata sınıfları, decorator'lar,
@@ -113,8 +114,11 @@ Katman, adlandırma ve yazım kurallarının tamamı `CLAUDE.md`'de.
 7. Modül kişisel veri tutuyorsa `anonymize(id, tx)` metodu aç ve
    `UserAnonymizationService`'e bağla.
 8. Mail gönderecekse içeriği `mails/<olay>.mail.ts` içinde `MailContent`
-   döndüren bir fonksiyon olarak yaz ve `MailService.send()` ile gönder (bkz.
+   döndüren bir fonksiyon olarak yaz; gönderimi bir arka plan işinden yap (bkz.
    [Mail](#mail)).
+9. Arka plan ya da zamanlanmış iş gerekiyorsa `jobs/` altına bir tanım
+   (`<olay>.job.ts`) ve bir handler (`<olay>.handler.ts`) ekle (bkz.
+   [Arka plan işleri](#arka-plan-işleri)).
 
 ## API
 
@@ -327,8 +331,13 @@ Sürücü `MAIL_DRIVER` ile seçilir:
 
 Başka bir sağlayıcı için `core/mail/transports/`'a `MailTransport`'u uygulayan
 bir sınıf ekleyip `MAIL_DRIVER`'a bir değer eklemek yeterli; mail gönderen kod
-değişmez. Kuyruk yok: mail, işlem commit'lendikten sonra istek içinde gönderilir;
-gönderim hatası işlemi geri almaz, loglanır.
+değişmez.
+
+Mail istek içinde gönderilmez. İstek, işlemle aynı transaction'da kuyruğa
+yalnızca id taşıyan bir iş bırakır; worker veriyi okuyup maili render eder ve
+gönderir. Gönderim başarısız olursa iş, bekleme süresi artarak tekrar denenir.
+Şifre sıfırlamada token da worker'da üretilir, böylece açık link kuyruğa hiç
+yazılmaz.
 
 ## Loglama ve istek bağlamı
 
@@ -370,7 +379,7 @@ listeler.
 | `THROTTLE_ENABLED`               | `true`        | Rate limit açık mı                                                  |
 | `THROTTLE_TTL`                   | `60`          | Rate limit penceresi (saniye)                                       |
 | `THROTTLE_LIMIT`                 | `100`         | Pencere başına, endpoint başına istek                               |
-| `CRON_ENABLED`                   | `true`        | Zamanlanmış işler bu instance'ta çalışsın mı                        |
+| `QUEUE_WORKERS_ENABLED`          | `true`        | Bu kopya kuyruktaki işleri ve zamanlamaları çalıştırsın mı          |
 | `SESSION_CLEANUP_RETENTION_DAYS` | `7`           | Süresi dolmuş / kapatılmış oturumların saklanma süresi (gün)        |
 | `USER_ANONYMIZATION_AFTER_DAYS`  | `14`          | Silinen hesabın geri alınabileceği süre (gün)                       |
 | `AUDIT_RETENTION_DAYS`           | `730`         | Denetim kayıtlarının saklanma süresi (gün)                          |
@@ -379,16 +388,53 @@ listeler.
 | `MAIL_FROM`                      | **zorunlu**   | Gönderen, ör. `Uygulama <no-reply@alanadi.com>`                     |
 | `RESEND_API_KEY`                 | —             | `MAIL_DRIVER=resend` ise zorunlu                                    |
 
-## Zamanlanmış işler
+## Arka plan işleri
 
-Saatler `Europe/Istanbul` saat dilimindedir
-(`common/constants/time.constants.ts`).
+Kuyruk [pg-boss](https://github.com/timgit/pg-boss) ile PostgreSQL üzerinde
+çalışır; ek altyapı gerekmez. İşler kendi `pgboss` şemasında durur ve Prisma
+migration'ları bu şemaya dokunmaz. Bir iş en az bir kez çalışır: başarısız olursa
+kuyruğun ayarına göre tekrar denenir, tekrarlar biterse `failed` olarak kalır ve
+loglanır.
 
-| İş                   | Saat  | Ne yapar                                                               |
-| -------------------- | ----- | ---------------------------------------------------------------------- |
-| `session-cleanup`    | 03:00 | Saklama süresi geçmiş, süresi dolmuş ya da kapatılmış oturumları siler |
-| `audit-log-cleanup`  | 04:00 | Saklama süresi dolan denetim kayıtlarını siler                         |
-| `user-anonymization` | 05:00 | Geri alma süresi dolan silinmiş hesapları anonimleştirir               |
+Her iş kendi modülünde iki dosyadır:
+
+```ts
+// modules/auth/jobs/password-reset-mail.job.ts
+export const passwordResetMailJob = defineJob({
+  name: AUTH_JOB.AUTH_PASSWORD_RESET_MAIL,
+  payload: z.object({ userId: z.uuid() }).strict(),
+  options: { retryLimit: 5, retryDelay: 30, retryBackoff: true },
+});
+
+// modules/auth/jobs/password-reset-mail.handler.ts
+@HandlesJob(passwordResetMailJob)
+@Injectable()
+export class PasswordResetMailHandler implements JobHandler<
+  JobPayload<typeof passwordResetMailJob>
+> {
+  constructor(private readonly passwords: PasswordService) {}
+
+  handle({ userId }: JobPayload<typeof passwordResetMailJob>): Promise<void> {
+    return this.passwords.sendResetMail(userId);
+  }
+}
+```
+
+İş kuyruğa `QueueService.send(job, payload, tx)` ile girer; `tx` verilirse
+işlemle birlikte kaydedilir ya da geri alınır. Handler açılışta bulunur ve
+worker olarak kaydedilir; `core/queue`'ya dokunmak gerekmez. Payload yalnızca id
+taşır, sır ve kişisel veri kuyruğa girmez. İşi başlatan isteğin `requestId`'si
+işle taşınır; worker logları ve işin yazdığı audit kayıtları o isteğe bağlanır.
+
+Zamanlanmış işler tanıma bir `schedule` ekler; zamanlama veritabanında tutulur
+ve birden fazla kopyada her tetiklenme tek bir iş üretir. Saatler
+`Europe/Istanbul` saat dilimindedir.
+
+| İş                     | Saat  | Ne yapar                                                               |
+| ---------------------- | ----- | ---------------------------------------------------------------------- |
+| `auth.session-cleanup` | 03:00 | Saklama süresi geçmiş, süresi dolmuş ya da kapatılmış oturumları siler |
+| `audit-log.cleanup`    | 04:00 | Saklama süresi dolan denetim kayıtlarını siler                         |
+| `user.anonymization`   | 05:00 | Geri alma süresi dolan silinmiş hesapları anonimleştirir               |
 
 ## Yayına alma
 
@@ -402,13 +448,16 @@ Saatler `Europe/Istanbul` saat dilimindedir
     `uniquelocal` adları da geçer): İstekler farklı yollardan geliyorsa, ör. web
     BFF ve proxy üzerinden, mobil yalnızca proxy üzerinden. Express, zincirde
     listede olmayan ilk adresi istemci IP'si sayar; sahte başlık işe yaramaz.
-- **Birden fazla replika:** `CRON_ENABLED`'ı yalnızca birinde açık bırak; yoksa
-  her replika aynı işi çalıştırır. Rate limit sayaçları süreç belleğindedir ve
+- **Birden fazla replika:** Zamanlanmış işler replika sayısından bağımsız olarak
+  bir kez çalışır. İşleri API'den ayrı bir süreçte çalıştırmak istersen API
+  kopyalarında `QUEUE_WORKERS_ENABLED=false` ver; iş eklemeye devam ederler.
+  Rate limit sayaçları süreç belleğindedir ve
   her replika kendi sayacını tutar; paylaşımlı bir sayaç için
   `ThrottlerStorage`'ı uygulayan bir sınıf yazıp `app.module.ts`'teki `storage`
   alanına ver.
-- **Veritabanı bağlantıları:** Toplam bağlantı `DATABASE_POOL_MAX` × instance
-  sayısıdır ve veritabanının `max_connections` değerini aşmamalı.
+- **Veritabanı bağlantıları:** Her kopya `DATABASE_POOL_MAX` + 3 (pg-boss'un
+  havuzu) bağlantı açar; toplam, veritabanının `max_connections` değerini
+  aşmamalı.
 - **BFF arkasındaysan** (ör. Next.js sunucusu) BFF gerçek `X-Forwarded-For`,
   `User-Agent` ve `X-Device-Name` başlıklarını iletmeli ve BFF'nin adresi
   `TRUST_PROXY` listesinde olmalı; yoksa bütün kullanıcılar aynı cihaz ve aynı

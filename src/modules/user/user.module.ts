@@ -4,10 +4,11 @@ import { AuthModule } from '../auth/auth.module.js';
 import { UserController } from './user.controller.js';
 import { UserService } from './services/user.service.js';
 import { UserAnonymizationService } from './services/user-anonymization.service.js';
+import { UserAnonymizationHandler } from './jobs/user-anonymization.handler.js';
 
 @Module({
   imports: [AuditLogModule, AuthModule],
   controllers: [UserController],
-  providers: [UserService, UserAnonymizationService],
+  providers: [UserService, UserAnonymizationService, UserAnonymizationHandler],
 })
 export class UserModule {}

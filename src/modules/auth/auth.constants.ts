@@ -33,6 +33,11 @@ export const AUTH_AUDIT = {
   USER_REACTIVATED: 'user_reactivated',
 } as const;
 
+export const AUTH_JOB = {
+  AUTH_PASSWORD_RESET_MAIL: 'auth.password-reset-mail',
+  AUTH_SESSION_CLEANUP: 'auth.session-cleanup',
+} as const;
+
 export const AUTH_ERROR = {
   EMAIL_TAKEN: 'EMAIL_TAKEN',
   INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',

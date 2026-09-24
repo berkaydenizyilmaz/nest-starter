@@ -50,7 +50,7 @@ export const envSchema = z
     THROTTLE_TTL: z.coerce.number().int().min(1).default(60),
     THROTTLE_LIMIT: z.coerce.number().int().min(1).default(100),
 
-    CRON_ENABLED: z
+    QUEUE_WORKERS_ENABLED: z
       .enum(['true', 'false'])
       .default('true')
       .transform((val) => val === 'true'),

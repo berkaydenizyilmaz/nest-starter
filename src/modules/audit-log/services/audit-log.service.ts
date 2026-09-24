@@ -1,4 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { MS_PER_DAY } from '../../../common/constants/time.constants.js';
+import type { Env } from '../../../config/env.schema.js';
 import { PrismaService } from '../../../core/prisma/prisma.service.js';
 import {
   buildCursorPage,
@@ -12,7 +15,10 @@ import type { ListAuditLogsRequest } from '../dto/list-audit-logs.request.js';
 
 @Injectable()
 export class AuditLogService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService<Env, true>,
+  ) {}
 
   async findAll(query: ListAuditLogsRequest): Promise<OffsetPage<AuditLog>> {
     const where = this.buildWhere(query);
@@ -42,6 +48,19 @@ export class AuditLogService {
     });
 
     return buildCursorPage(rows, query.limit, (row) => row.id);
+  }
+
+  async removeExpired(): Promise<number> {
+    const retentionDays = this.config.get('AUDIT_RETENTION_DAYS', {
+      infer: true,
+    });
+    const threshold = new Date(Date.now() - retentionDays * MS_PER_DAY);
+
+    const { count } = await this.prisma.auditLog.deleteMany({
+      where: { createdAt: { lt: threshold } },
+    });
+
+    return count;
   }
 
   async anonymize(

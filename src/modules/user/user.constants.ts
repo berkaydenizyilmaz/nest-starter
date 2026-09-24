@@ -3,6 +3,10 @@ export const USER_AUDIT = {
   USER_ANONYMIZED: 'user_anonymized',
 } as const;
 
+export const USER_JOB = {
+  USER_ANONYMIZATION: 'user.anonymization',
+} as const;
+
 export const USER_ERROR = {
   USER_NOT_FOUND: 'USER_NOT_FOUND',
 } as const;

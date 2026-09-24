@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { AuditLogAdminController } from './audit-log-admin.controller.js';
-import { AuditLogCleanupService } from './services/audit-log-cleanup.service.js';
+import { AuditLogCleanupHandler } from './jobs/audit-log-cleanup.handler.js';
 import { AuditLogService } from './services/audit-log.service.js';
 
 @Module({
   controllers: [AuditLogAdminController],
-  providers: [AuditLogService, AuditLogCleanupService],
+  providers: [AuditLogService, AuditLogCleanupHandler],
   exports: [AuditLogService],
 })
 export class AuditLogModule {}

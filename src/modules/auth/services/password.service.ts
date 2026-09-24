@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import argon2 from 'argon2';
-import { PinoLogger } from 'nestjs-pino';
 import type { AuthUser } from '../../../common/auth-user.type.js';
 import { AUDIT_TARGET } from '../../../common/constants/audit.constants.js';
 import { MS_PER_MINUTE } from '../../../common/constants/time.constants.js';
@@ -13,6 +12,7 @@ import type { Env } from '../../../config/env.schema.js';
 import { AuditService } from '../../../core/audit/audit.service.js';
 import { MailService } from '../../../core/mail/mail.service.js';
 import { PrismaService } from '../../../core/prisma/prisma.service.js';
+import { QueueService } from '../../../core/queue/queue.service.js';
 import { AuditOutcome } from '../../../generated/prisma/client.js';
 import {
   AUTH_AUDIT,
@@ -24,6 +24,7 @@ import {
 } from '../auth.constants.js';
 import type { ChangePasswordRequest } from '../dto/request/change-password.request.js';
 import type { ResetPasswordRequest } from '../dto/request/reset-password.request.js';
+import { passwordResetMailJob } from '../jobs/password-reset-mail.job.js';
 import { passwordResetMail } from '../mails/password-reset.mail.js';
 import { createOpaqueToken, hashOpaqueToken } from '../opaque-token.util.js';
 import { SessionService } from './session.service.js';
@@ -36,10 +37,8 @@ export class PasswordService {
     private readonly sessions: SessionService,
     private readonly audit: AuditService,
     private readonly mail: MailService,
-    private readonly logger: PinoLogger,
-  ) {
-    this.logger.setContext(PasswordService.name);
-  }
+    private readonly queue: QueueService,
+  ) {}
 
   async change(user: AuthUser, input: ChangePasswordRequest): Promise<void> {
     const account = await this.prisma.user.findFirst({
@@ -110,39 +109,12 @@ export class PasswordService {
   async requestReset(email: string): Promise<void> {
     const user = await this.prisma.user.findFirst({
       where: { email, anonymizedAt: null },
-      select: {
-        id: true,
-        email: true,
-        passwordResetTokens: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          select: { createdAt: true },
-        },
-      },
+      select: { id: true },
     });
 
-    if (!user) return;
-
-    const [latest] = user.passwordResetTokens;
-    if (
-      latest &&
-      Date.now() - latest.createdAt.getTime() < PASSWORD_RESET_COOLDOWN_MS
-    ) {
-      return;
-    }
-
-    const token = createOpaqueToken(PASSWORD_RESET_TOKEN_BYTES);
+    if (!user || (await this.hasRecentResetToken(user.id))) return;
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.passwordResetToken.deleteMany({ where: { userId: user.id } });
-      await tx.passwordResetToken.create({
-        data: {
-          userId: user.id,
-          tokenHash: hashOpaqueToken(token),
-          expiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_MS),
-        },
-      });
-
       await this.audit.record(
         {
           event: AUTH_AUDIT.AUTHN_PASSWORD_RESET_REQUEST,
@@ -152,6 +124,30 @@ export class PasswordService {
         },
         tx,
       );
+      await this.queue.send(passwordResetMailJob, { userId: user.id }, tx);
+    });
+  }
+
+  async sendResetMail(userId: string): Promise<void> {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, anonymizedAt: null },
+      select: { email: true },
+    });
+
+    if (!user || (await this.hasRecentResetToken(userId))) return;
+
+    const token = createOpaqueToken(PASSWORD_RESET_TOKEN_BYTES);
+
+    const stored = await this.prisma.$transaction(async (tx) => {
+      await tx.passwordResetToken.deleteMany({ where: { userId } });
+      return tx.passwordResetToken.create({
+        data: {
+          userId,
+          tokenHash: hashOpaqueToken(token),
+          expiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_MS),
+        },
+        select: { id: true },
+      });
     });
 
     const resetUrl = new URL(
@@ -169,7 +165,10 @@ export class PasswordService {
         }),
       });
     } catch (error) {
-      this.logger.error({ err: error }, 'Password reset mail was not sent');
+      await this.prisma.passwordResetToken.deleteMany({
+        where: { id: stored.id },
+      });
+      throw error;
     }
   }
 
@@ -234,6 +233,19 @@ export class PasswordService {
         tx,
       );
     });
+  }
+
+  private async hasRecentResetToken(userId: string): Promise<boolean> {
+    const latest = await this.prisma.passwordResetToken.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true },
+    });
+
+    return (
+      latest !== null &&
+      Date.now() - latest.createdAt.getTime() < PASSWORD_RESET_COOLDOWN_MS
+    );
   }
 }
 

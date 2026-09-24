@@ -234,6 +234,24 @@ export class SessionService {
     });
   }
 
+  async removeExpired(): Promise<number> {
+    const retentionDays = this.config.get('SESSION_CLEANUP_RETENTION_DAYS', {
+      infer: true,
+    });
+    const threshold = new Date(Date.now() - retentionDays * MS_PER_DAY);
+
+    const { count } = await this.prisma.session.deleteMany({
+      where: {
+        OR: [
+          { expiresAt: { lt: threshold } },
+          { revokedAt: { lt: threshold } },
+        ],
+      },
+    });
+
+    return count;
+  }
+
   async findAllActive(userId: string): Promise<Session[]> {
     return this.prisma.session.findMany({
       where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },

@@ -149,8 +149,21 @@ spec içinde benzersiz olmalı. Fiil + kaynak yaz (`listSessions`, `revokeSessio
   İçerik modülün `mails/` klasöründe (`dto/` gibi her zaman ayrı) `MailContent`
   döndüren saf fonksiyondur: `password-reset.mail.ts` → `passwordResetMail()`.
   HTML'e giren her dinamik değer `escapeHtml`'den geçer.
-- Mail işlem commit'lendikten sonra gönderilir; gönderim hatası işlemi geri
-  almaz, `logger.error` ile loglanır. Alıcı adresini loglama.
+- Mail istek içinde gönderilmez; bir kuyruk işi gönderir. Alıcı adresini
+  loglama.
+
+## Kuyruk
+
+- İş, modülün `jobs/` klasöründe (her zaman ayrı) iki dosyadır: `<olay>.job.ts`
+  `defineJob()` ile tanım, `<olay>.handler.ts` `@HandlesJob(tanım)` taşıyan ve
+  modülün provider'larına eklenen handler. Ayrı dosyalar döngüsel import'u önler:
+  servis tanımı, handler servisi import eder.
+- Handler controller gibi incedir; iş mantığı serviste. İş adı modülün
+  `<ad>.constants.ts`'inde `<modül>.<olay>` biçiminde sabittir.
+- Kuyruğa `QueueService.send(job, payload, tx)`; durum değiştiren işlemle
+  birlikteyse `tx` ver. Payload yalnızca id taşır — sır ve kişisel veri kuyruk
+  tablosunda saklanır.
+- İş en az bir kez çalışır; handler tekrar çalıştığında zarar vermemeli.
 
 ## Tuzaklar
 
