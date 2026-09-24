@@ -26,7 +26,10 @@ import type { ChangePasswordRequest } from '../dto/request/change-password.reque
 import type { ResetPasswordRequest } from '../dto/request/reset-password.request.js';
 import { passwordResetMailJob } from '../jobs/password-reset-mail.job.js';
 import { passwordResetMail } from '../mails/password-reset.mail.js';
-import { createOpaqueToken, hashOpaqueToken } from '../opaque-token.util.js';
+import {
+  createOpaqueToken,
+  hashOpaqueToken,
+} from '../../../core/opaque-token.util.js';
 import { SessionService } from './session.service.js';
 
 @Injectable()

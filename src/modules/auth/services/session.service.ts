@@ -23,7 +23,10 @@ import {
   REFRESH_TOKEN_BYTES,
   ROTATION_GRACE_MS,
 } from '../auth.constants.js';
-import { createOpaqueToken, hashOpaqueToken } from '../opaque-token.util.js';
+import {
+  createOpaqueToken,
+  hashOpaqueToken,
+} from '../../../core/opaque-token.util.js';
 
 @Injectable()
 export class SessionService {
