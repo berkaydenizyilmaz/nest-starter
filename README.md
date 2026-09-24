@@ -7,7 +7,7 @@ koruması kurulu ve birbirine bağlı gelir; sen yalnızca kendi modüllerini
 eklersin.
 
 **Nest 12** (Express 5, ESM) · **Prisma 7** + PostgreSQL · **pg-boss** ·
-**Zod 4** · **pino** · **nestjs-cls** · **argon2** · **Resend** · **Vitest** ·
+**Zod 4** · **pino** · **nestjs-cls** · **argon2** · **Resend** ·
 **oxlint**
 
 ## İçindekiler
@@ -498,7 +498,6 @@ ve birden fazla kopyada her tetiklenme tek bir iş üretir. Saatler
 | `pnpm start:prod`                          | Derlenmiş uygulamayı çalıştırır |
 | `pnpm lint`                                | oxlint (type-aware)             |
 | `pnpm format`                              | Prettier                        |
-| `pnpm test`                                | Vitest                          |
 | `pnpm exec prisma migrate dev --name <ad>` | Şema değişikliği için migration |
 | `pnpm exec prisma migrate deploy`          | Bekleyen migration'ları uygular |
 | `pnpm exec prisma studio`                  | Veritabanı arayüzü              |
