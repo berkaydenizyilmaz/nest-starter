@@ -66,7 +66,10 @@ export class UserAnonymizationService {
         });
         if (anonymized) processed++;
       } catch (error) {
-        this.logger.error({ err: error }, `Failed to anonymize user ${id}`);
+        this.logger.error(
+          { err: error, userId: id },
+          'Failed to anonymize user',
+        );
       }
     }
 
