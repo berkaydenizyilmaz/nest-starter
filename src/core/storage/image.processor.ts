@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import sharp, { type Sharp } from 'sharp';
+import sharp, { type Raw, type Sharp } from 'sharp';
 import { detectContentType } from './content-type.util.js';
 import {
   IMAGE_CONCURRENCY,
@@ -41,33 +41,45 @@ async function render(spec: ImageSpec, input: Buffer): Promise<ProcessedImage> {
     throw new InvalidImageError();
   }
 
-  const source = sharp(input, {
-    limitInputPixels: IMAGE_MAX_INPUT_PIXELS,
-    autoOrient: true,
-  });
+  const pixels = await decode(spec, input);
+  const master = await encode(sharp(pixels.data, { raw: pixels.raw }));
 
-  try {
-    const [master, variants] = await Promise.all([
-      encode(
-        source.clone().resize(spec.maxEdge, spec.maxEdge, {
-          fit: 'inside',
+  const variants: ProcessedImage['variants'] = [];
+  for (const [name, [width, height]] of Object.entries(spec.variants)) {
+    variants.push({
+      name,
+      ...(await encode(
+        sharp(pixels.data, { raw: pixels.raw }).resize(width, height, {
+          fit: spec.fit,
           withoutEnlargement: true,
         }),
-      ),
-      Promise.all(
-        Object.entries(spec.variants).map(async ([name, [width, height]]) => ({
-          name,
-          ...(await encode(
-            source.clone().resize(width, height, {
-              fit: spec.fit,
-              withoutEnlargement: true,
-            }),
-          )),
-        })),
-      ),
-    ]);
+      )),
+    });
+  }
 
-    return { contentType: IMAGE_CONTENT_TYPE, master, variants };
+  return { contentType: IMAGE_CONTENT_TYPE, master, variants };
+}
+
+async function decode(
+  spec: ImageSpec,
+  input: Buffer,
+): Promise<{ data: Buffer; raw: Raw }> {
+  try {
+    const { data, info } = await sharp(input, {
+      limitInputPixels: IMAGE_MAX_INPUT_PIXELS,
+      autoOrient: true,
+    })
+      .resize(spec.maxEdge, spec.maxEdge, {
+        fit: 'inside',
+        withoutEnlargement: true,
+      })
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    return {
+      data,
+      raw: { width: info.width, height: info.height, channels: info.channels },
+    };
   } catch (error) {
     throw new InvalidImageError({ cause: error });
   }
