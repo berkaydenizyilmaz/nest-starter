@@ -3,6 +3,7 @@ import {
   isoDate,
   nullableIsoDate,
 } from '../../../common/schemas/iso-date.schema.js';
+import { storedFileResponseSchema } from '../../../common/schemas/stored-file.schema.js';
 import { Role } from '../../../generated/prisma/client.js';
 
 export const meResponseSchema = z
@@ -12,6 +13,7 @@ export const meResponseSchema = z
     role: z.enum(Role),
     createdAt: isoDate(),
     lastLoginAt: nullableIsoDate(),
+    avatar: storedFileResponseSchema.nullable(),
   })
   .meta({ id: 'Me' });
 

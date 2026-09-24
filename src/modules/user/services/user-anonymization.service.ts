@@ -5,6 +5,7 @@ import { PrismaService } from '../../../core/prisma/prisma.service.js';
 import { UserService } from './user.service.js';
 import { SessionService } from '../../auth/services/session.service.js';
 import { AuditLogService } from '../../audit-log/services/audit-log.service.js';
+import { FileService } from '../../file/services/file.service.js';
 import { AuditService } from '../../../core/audit/audit.service.js';
 import { AUDIT_TARGET } from '../../../common/constants/audit.constants.js';
 import { USER_AUDIT } from '../user.constants.js';
@@ -21,6 +22,7 @@ export class UserAnonymizationService {
     private readonly users: UserService,
     private readonly sessions: SessionService,
     private readonly auditLogs: AuditLogService,
+    private readonly files: FileService,
     private readonly audit: AuditService,
     private readonly logger: PinoLogger,
   ) {
@@ -52,6 +54,7 @@ export class UserAnonymizationService {
 
           await this.sessions.anonymize(id, tx);
           await this.auditLogs.anonymize(id, tx);
+          await this.files.anonymizeOwner(id, tx);
 
           await this.audit.record(
             {

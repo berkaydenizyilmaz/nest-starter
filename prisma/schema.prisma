@@ -23,6 +23,9 @@ model User {
   lastFailedLoginAt DateTime?
   lockedUntil       DateTime?
 
+  avatarFileId String?
+  avatarFile   StoredFile? @relation("UserAvatar", fields: [avatarFileId], references: [id], onDelete: Restrict)
+
   deletedAt    DateTime?
   anonymizedAt DateTime?
   createdAt    DateTime  @default(now())
@@ -33,6 +36,7 @@ model User {
   ownedFiles    StoredFile[]   @relation("StoredFileOwner")
 
   @@index([anonymizedAt, deletedAt])
+  @@index([avatarFileId])
 }
 
 model Session {
@@ -114,6 +118,8 @@ model StoredFile {
 
   createdAt DateTime  @default(now())
   readyAt   DateTime?
+
+  userAvatars User[] @relation("UserAvatar")
 
   @@index([status, createdAt])
   @@index([status, readyAt])

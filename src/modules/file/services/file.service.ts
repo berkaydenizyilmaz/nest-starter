@@ -36,6 +36,7 @@ import {
 } from '../../../core/storage/storage.error.js';
 import {
   AuditOutcome,
+  type Prisma,
   StoredFileStatus,
   StoredFileVisibility,
   type StoredFile,
@@ -100,7 +101,7 @@ export class FileService {
 
   async createUpload(input: CreateUploadInput): Promise<UploadTicket> {
     const purpose = this.purposeOrReject(input.purpose);
-    await this.assertCanUpload(purpose, input.actor);
+    await this.assertRoleAllowed(purpose, input.actor);
 
     if (!purpose.contentTypes.includes(input.contentType)) {
       throw invalidInputError(
@@ -215,7 +216,60 @@ export class FileService {
     };
   }
 
-  private async assertCanUpload(
+  async assertAttachable(
+    {
+      fileId,
+      purpose,
+      actor,
+    }: { fileId: string; purpose: FilePurpose; actor: FileActor },
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    const file = await tx.storedFile.findFirst({
+      where: { id: fileId, purpose: purpose.name },
+      select: { status: true, ownerId: true },
+    });
+
+    if (
+      !file ||
+      (purpose.ownership === 'personal' && file.ownerId !== actor.id)
+    ) {
+      throw fileNotFoundError();
+    }
+
+    if (purpose.ownership === 'shared') {
+      await this.assertRoleAllowed(purpose, actor);
+    }
+
+    if (file.status !== StoredFileStatus.READY) {
+      throw invalidInputError(
+        FILE_ERROR.FILE_NOT_READY,
+        'fileId',
+        'File upload has not been completed',
+      );
+    }
+  }
+
+  async resolveMany(fileIds: string[]): Promise<Map<string, ResolvedFile>> {
+    if (fileIds.length === 0) return new Map();
+
+    const files = await this.prisma.storedFile.findMany({
+      where: { id: { in: fileIds }, status: StoredFileStatus.READY },
+    });
+
+    return new Map(files.map((file) => [file.id, this.resolve(file)]));
+  }
+
+  async anonymizeOwner(
+    userId: string,
+    client: Prisma.TransactionClient,
+  ): Promise<void> {
+    await client.storedFile.updateMany({
+      where: { ownerId: userId, originalName: { not: null } },
+      data: { originalName: null },
+    });
+  }
+
+  private async assertRoleAllowed(
     purpose: FilePurpose,
     actor: FileActor,
   ): Promise<void> {
