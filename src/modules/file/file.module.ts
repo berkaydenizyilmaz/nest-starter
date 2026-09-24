@@ -3,6 +3,7 @@ import type { FilePurpose } from './file-purpose.definition.js';
 import { FilePurposeRegistry } from './file-purpose.registry.js';
 import { FileController } from './file.controller.js';
 import { FileObjectDeleteHandler } from './jobs/file-object-delete.handler.js';
+import { FileSweepHandler } from './jobs/file-sweep.handler.js';
 import { FileCleanupService } from './services/file-cleanup.service.js';
 import { FileService } from './services/file.service.js';
 
@@ -18,6 +19,7 @@ export class FileModule {
         FileService,
         FileCleanupService,
         FileObjectDeleteHandler,
+        FileSweepHandler,
       ],
       exports: [FilePurposeRegistry, FileService],
     };
