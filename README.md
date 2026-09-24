@@ -32,9 +32,10 @@ modüllerini eklersin.
 
 ## Hızlı başlangıç
 
-**Gerekenler:** Node.js LTS (**22.22.3+** veya **24.15+**; 23.x ve 25.x
-desteklenmiyor), pnpm, PostgreSQL ve S3 uyumlu bir depolama (geliştirmede de
-gerçek bucket'lar kullanılır; kurulum için bkz. [Yayına alma](#yayına-alma)).
+**Gerekenler:** Node.js **24 LTS** (24.15+), pnpm, PostgreSQL ve S3 uyumlu bir
+depolama (geliştirmede de gerçek bucket'lar kullanılır; kurulum için bkz.
+[Yayına alma](#yayına-alma)). Node 22 (22.22.3+) de çalışır ama desteği 30
+Nisan 2027'de biter; 26 ise 28 Ekim 2026'da LTS olduktan sonra kullanılabilir.
 
 ```bash
 git clone https://github.com/berkaydenizyilmaz/nest-starter.git yeni-proje
@@ -56,7 +57,8 @@ değilken).
 
 **İlk admin:** Admin atayan bir endpoint yok. Kayıt olduktan sonra kullanıcının
 `role` alanını veritabanında `ADMIN` yap (`pnpm exec prisma studio` en kolay
-yolu), sonra yeniden giriş yap; rol access token'a girişte yazılır.
+yolu). Rol access token'a girişte ve her refresh'te veritabanından okunarak
+yazılır; yeniden giriş gerekmez, bir sonraki refresh yeni rolü taşır.
 
 ## Proje yapısı
 
