@@ -143,6 +143,15 @@ spec içinde benzersiz olmalı. Fiil + kaynak yaz (`listSessions`, `revokeSessio
 - `metadata` makine okuru taşır: enum, sayı, id, sebep kodu. Ham kullanıcı girdisi
   girmez; kişisel verinin yeri ayrılmış kolonlar ya da modülün kendi tablosudur.
 
+## Mail
+
+- Gönderim `core/mail`'deki `MailService.send()` ile; `core/mail` içerik bilmez.
+  İçerik modülün `mails/` klasöründe (`dto/` gibi her zaman ayrı) `MailContent`
+  döndüren saf fonksiyondur: `password-reset.mail.ts` → `passwordResetMail()`.
+  HTML'e giren her dinamik değer `escapeHtml`'den geçer.
+- Mail işlem commit'lendikten sonra gönderilir; gönderim hatası işlemi geri
+  almaz, `logger.error` ile loglanır. Alıcı adresini loglama.
+
 ## Tuzaklar
 
 - **ESM projesi.** Relative import'lar `.js` uzantılı olmalı; uzantısız yazarsan

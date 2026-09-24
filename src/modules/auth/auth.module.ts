@@ -3,13 +3,19 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './controllers/auth.controller.js';
 import { AuthService } from './services/auth.service.js';
 import { SessionController } from './controllers/session.controller.js';
+import { PasswordResetService } from './services/password-reset.service.js';
 import { SessionService } from './services/session.service.js';
 import { SessionCleanupService } from './services/session-cleanup.service.js';
 
 @Module({
   imports: [JwtModule.register({ global: true })],
   controllers: [AuthController, SessionController],
-  providers: [AuthService, SessionService, SessionCleanupService],
+  providers: [
+    AuthService,
+    PasswordResetService,
+    SessionService,
+    SessionCleanupService,
+  ],
   exports: [SessionService],
 })
 export class AuthModule {}

@@ -21,10 +21,15 @@ import {
   AUTH_THROTTLE_TTL_MS,
 } from '../auth.constants.js';
 import { AuthService } from '../services/auth.service.js';
+import { PasswordResetService } from '../services/password-reset.service.js';
 import {
   type ChangePasswordRequest,
   changePasswordRequestSchema,
 } from '../dto/request/change-password.request.js';
+import {
+  type ForgotPasswordRequest,
+  forgotPasswordRequestSchema,
+} from '../dto/request/forgot-password.request.js';
 import {
   type LoginRequest,
   loginRequestSchema,
@@ -33,6 +38,10 @@ import {
   type RefreshRequest,
   refreshRequestSchema,
 } from '../dto/request/refresh.request.js';
+import {
+  type ResetPasswordRequest,
+  resetPasswordRequestSchema,
+} from '../dto/request/reset-password.request.js';
 import {
   type RegisterRequest,
   registerRequestSchema,
@@ -48,7 +57,10 @@ import {
 
 @Controller({ path: 'auth', version: '1' })
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly passwordResets: PasswordResetService,
+  ) {}
 
   @Public()
   @Post('register')
@@ -129,5 +141,31 @@ export class AuthController {
     @Body({ schema: changePasswordRequestSchema }) dto: ChangePasswordRequest,
   ): Promise<void> {
     return this.auth.changePassword(user, dto);
+  }
+
+  @Public()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Post('password/forgot')
+  @Throttle({
+    default: { ttl: AUTH_THROTTLE_TTL_MS, limit: AUTH_THROTTLE_LIMIT },
+  })
+  @ApiErrors(HttpStatus.UNPROCESSABLE_ENTITY, HttpStatus.TOO_MANY_REQUESTS)
+  requestPasswordReset(
+    @Body({ schema: forgotPasswordRequestSchema }) dto: ForgotPasswordRequest,
+  ): Promise<void> {
+    return this.passwordResets.request(dto.email);
+  }
+
+  @Public()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Post('password/reset')
+  @Throttle({
+    default: { ttl: AUTH_THROTTLE_TTL_MS, limit: AUTH_THROTTLE_LIMIT },
+  })
+  @ApiErrors(HttpStatus.UNPROCESSABLE_ENTITY, HttpStatus.TOO_MANY_REQUESTS)
+  resetPassword(
+    @Body({ schema: resetPasswordRequestSchema }) dto: ResetPasswordRequest,
+  ): Promise<void> {
+    return this.passwordResets.complete(dto);
   }
 }

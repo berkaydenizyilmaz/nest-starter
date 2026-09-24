@@ -6,6 +6,11 @@ export const ROTATION_GRACE_MS = 30 * 1000;
 
 export const MAX_ACTIVE_SESSIONS = 10;
 
+export const PASSWORD_RESET_TOKEN_BYTES = 32;
+export const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
+export const PASSWORD_RESET_COOLDOWN_MS = 60 * 1000;
+export const PASSWORD_RESET_PATH = '/reset-password';
+
 export const AUTH_THROTTLE_TTL_MS = 60 * 1000;
 export const AUTH_THROTTLE_LIMIT = 5;
 
@@ -19,6 +24,8 @@ export const AUTH_AUDIT = {
   AUTHN_LOGOUT: 'authn_logout',
   AUTHN_LOGIN_LOCK: 'authn_login_lock',
   AUTHN_PASSWORD_CHANGE: 'authn_password_change',
+  AUTHN_PASSWORD_RESET_REQUEST: 'authn_password_reset_request',
+  AUTHN_PASSWORD_RESET: 'authn_password_reset',
   SESSION_REVOKED: 'session_revoked',
   SESSION_TOKEN_REUSE: 'session_token_reuse',
 
@@ -32,6 +39,8 @@ export const AUTH_ERROR = {
   ACCOUNT_DELETED: 'ACCOUNT_DELETED',
   ACCOUNT_TEMPORARILY_LOCKED: 'ACCOUNT_TEMPORARILY_LOCKED',
   INVALID_CURRENT_PASSWORD: 'INVALID_CURRENT_PASSWORD',
+  INVALID_RESET_TOKEN: 'INVALID_RESET_TOKEN',
+  RESET_TOKEN_EXPIRED: 'RESET_TOKEN_EXPIRED',
 
   MISSING_TOKEN: 'MISSING_TOKEN',
   INVALID_TOKEN: 'INVALID_TOKEN',

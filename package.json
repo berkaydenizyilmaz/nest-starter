@@ -35,6 +35,7 @@
     "nestjs-cls": "^7.0.0",
     "nestjs-pino": "^5.2.0",
     "reflect-metadata": "^0.2.2",
+    "resend": "^6.28.1",
     "rxjs": "^7.8.2",
     "zod": "^4.6.5",
     "zod-openapi": "^6.0.2"

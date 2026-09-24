@@ -9,6 +9,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { toValidationError } from './common/utils/validation.util.js';
 import { AuditModule } from './core/audit/audit.module.js';
+import { MailModule } from './core/mail/mail.module.js';
 import { AuditLogModule } from './modules/audit-log/audit-log.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { type Env, envSchema } from './config/env.schema.js';
@@ -52,6 +53,7 @@ import { MS_PER_SECOND } from './common/constants/time.constants.js';
     LoggerModule,
     PrismaModule,
     AuditModule,
+    MailModule,
     AuditLogModule,
     AuthModule,
     UserModule,

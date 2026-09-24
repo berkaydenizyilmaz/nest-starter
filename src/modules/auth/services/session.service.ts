@@ -1,4 +1,3 @@
-import { createHash, randomBytes } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 import { ConfigService } from '@nestjs/config';
@@ -24,6 +23,7 @@ import {
   REFRESH_TOKEN_BYTES,
   ROTATION_GRACE_MS,
 } from '../auth.constants.js';
+import { createOpaqueToken, hashOpaqueToken } from '../opaque-token.util.js';
 
 @Injectable()
 export class SessionService {
@@ -38,7 +38,7 @@ export class SessionService {
     userId: string,
     client: Prisma.TransactionClient = this.prisma,
   ): Promise<{ token: string; sessionId: string }> {
-    const token = this.createToken();
+    const token = createOpaqueToken(REFRESH_TOKEN_BYTES);
 
     const session = await client.session.create({
       data: {
@@ -47,7 +47,7 @@ export class SessionService {
         ip: this.cls.get('ip'),
         userAgent: this.cls.get('userAgent'),
         device: this.cls.get('device'),
-        refreshTokens: { create: { tokenHash: hashToken(token) } },
+        refreshTokens: { create: { tokenHash: hashOpaqueToken(token) } },
       },
     });
 
@@ -60,7 +60,7 @@ export class SessionService {
     refreshToken: string,
   ): Promise<{ token: string; user: User; sessionId: string }> {
     const stored = await this.prisma.refreshToken.findUnique({
-      where: { tokenHash: hashToken(refreshToken) },
+      where: { tokenHash: hashOpaqueToken(refreshToken) },
       include: { session: { include: { user: true } } },
     });
 
@@ -95,7 +95,7 @@ export class SessionService {
       );
     }
 
-    const token = this.createToken();
+    const token = createOpaqueToken(REFRESH_TOKEN_BYTES);
     const now = new Date();
 
     await this.prisma.$transaction(async (tx) => {
@@ -111,7 +111,7 @@ export class SessionService {
       }
 
       await tx.refreshToken.create({
-        data: { sessionId: session.id, tokenHash: hashToken(token) },
+        data: { sessionId: session.id, tokenHash: hashOpaqueToken(token) },
       });
 
       const touched = await tx.session.updateMany({
@@ -140,7 +140,7 @@ export class SessionService {
       where: {
         revokedAt: null,
         refreshTokens: {
-          some: { tokenHash: hashToken(refreshToken), usedAt: null },
+          some: { tokenHash: hashOpaqueToken(refreshToken), usedAt: null },
         },
       },
       data: { revokedAt: new Date() },
@@ -281,18 +281,10 @@ export class SessionService {
     );
   }
 
-  private createToken(): string {
-    return randomBytes(REFRESH_TOKEN_BYTES).toString('base64url');
-  }
-
   private expiryDate(): Date {
     const days = this.config.get('REFRESH_TTL_DAYS', { infer: true });
     return new Date(Date.now() + days * MS_PER_DAY);
   }
-}
-
-function hashToken(token: string): string {
-  return createHash('sha256').update(token).digest('hex');
 }
 
 function withinGraceWindow(usedAt: Date): boolean {

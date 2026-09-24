@@ -18,6 +18,7 @@ sen yalnızca kendi modüllerini eklersin.
 - [Hesap silme ve anonimleştirme](#hesap-silme-ve-anonimleştirme)
 - [Denetim kaydı](#denetim-kaydı)
 - [Kötüye kullanım koruması](#kötüye-kullanım-koruması)
+- [Mail](#mail)
 - [Loglama ve istek bağlamı](#loglama-ve-istek-bağlamı)
 - [Yapılandırma](#yapılandırma)
 - [Zamanlanmış işler](#zamanlanmış-işler)
@@ -62,6 +63,7 @@ src/
 ├── core/            Altyapı; domain bilmez
 │   ├── prisma/          PrismaService
 │   ├── audit/           AuditService: denetim kaydı yazıcısı
+│   ├── mail/            MailService ve sürücüleri (console, resend)
 │   ├── logger.module.ts
 │   └── request-context.module.ts
 ├── common/          Modüllerin ortak dili: hata sınıfları, decorator'lar,
@@ -110,6 +112,9 @@ Katman, adlandırma ve yazım kurallarının tamamı `CLAUDE.md`'de.
    `AuditService.record(..., tx)` ile yaz.
 7. Modül kişisel veri tutuyorsa `anonymize(id, tx)` metodu aç ve
    `UserAnonymizationService`'e bağla.
+8. Mail gönderecekse içeriği `mails/<olay>.mail.ts` içinde `MailContent`
+   döndüren bir fonksiyon olarak yaz ve `MailService.send()` ile gönder (bkz.
+   [Mail](#mail)).
 
 ## API
 
@@ -122,6 +127,8 @@ Bütün yollar `/api` ile başlar; iş endpoint'leri `v1` altındadır.
 | `POST`   | `/api/v1/auth/refresh`          | açık   | Refresh token ile yeni token çifti           |
 | `POST`   | `/api/v1/auth/logout`           | açık   | Refresh token'ın oturumunu kapatır           |
 | `POST`   | `/api/v1/auth/password/change`  | bearer | Şifreyi değiştirir; diğer oturumları kapatır |
+| `POST`   | `/api/v1/auth/password/forgot`  | açık   | Şifre sıfırlama maili gönderir               |
+| `POST`   | `/api/v1/auth/password/reset`   | açık   | Maildeki token ile yeni şifre belirler       |
 | `GET`    | `/api/v1/auth/sessions`         | bearer | Aktif oturumlar; mevcut olan işaretli        |
 | `DELETE` | `/api/v1/auth/sessions/:id`     | bearer | Tek oturumu kapatır                          |
 | `DELETE` | `/api/v1/auth/sessions`         | bearer | Bütün oturumları kapatır                     |
@@ -210,6 +217,17 @@ belirler. Bu cihazdaki oturum açık kalır, diğer bütün oturumlar kapanır. 
 şifre yanlışsa cevap `401` değil `422 INVALID_CURRENT_PASSWORD` olur; `401`
 istemcide "oturum düştü" diye yorumlanıp kullanıcıyı atardı.
 
+**Şifre sıfırlama.** `password/forgot` e-posta kayıtlı olsun olmasın `204`
+döner; kayıtlıysa `APP_URL` + `/reset-password?token=…` linkini içeren bir mail
+gider. Token tek kullanımlıktır, 1 saat geçerlidir ve veritabanında hash'li
+durur; yeni istek eskisini geçersiz kılar, aynı hesap için 60 saniyede bir
+mailden fazlası gönderilmez. `password/reset` başarılı olunca bütün oturumlar
+kapanır, giriş kilidi sıfırlanır; kullanıcı yeni şifreyle giriş yapar. Geçersiz
+ya da kullanılmış token `422 INVALID_RESET_TOKEN`, süresi dolmuş token
+`422 RESET_TOKEN_EXPIRED` döner. Web uygulamasının `/reset-password` sayfası
+token'ı query'den alıp bu endpoint'e göndermelidir; mobil aynı linki universal
+link olarak yakalar.
+
 **İptalin sınırı.** Oturum kapatmak refresh'i hemen keser ama access token
 stateless doğrulandığı için ömrü dolana kadar (`JWT_ACCESS_TTL`, varsayılan 15
 dakika) geçerli kalır. Aynısı çalınma tespitinde ve şifre değiştirmede de
@@ -268,7 +286,7 @@ değer taşır (enum, sayı, id); ham kullanıcı girdisi girmez. Kayıtlar
 **Rate limit** tek bir kaynaktan gelen seli durdurur. Korumalı endpoint'lerde
 kullanıcıya, açık endpoint'lerde IP'ye göre sayar. Sayaç **endpoint başına**
 tutulur: `THROTTLE_LIMIT=100`, her endpoint için pencere başına 100 istek
-demektir. `/auth/login`, `/auth/register` ve `/auth/password/change` dakikada 5
+demektir. `/auth/login`, `/auth/register` ve `/auth/password/*` dakikada 5
 istekle sınırlı. Health endpoint'leri limitten muaf.
 
 **Hesap kilidi** binlerce IP'den tek hesaba yapılan denemeyi yavaşlatır. Üç
@@ -287,6 +305,30 @@ doğru sayılır; kilit oluştuktan sonra doğru şifre de reddedilir.
   denemesinin cevap süresi ise e-postanın kayıtlı olup olmadığını ele vermez.
 - Hacimsel saldırıya karşı uygulama içi limit yetmez; o kenar katmanın işi
   (nginx `limit_req`, Cloudflare).
+
+## Mail
+
+Gönderim `core/mail`'deki `MailService` ile yapılır; `core/mail` ne
+gönderileceğini bilmez. Her mailin içeriği ait olduğu modülde, `mails/`
+klasöründe `{ subject, html, text }` döndüren bir fonksiyondur
+(`modules/auth/mails/password-reset.mail.ts`). HTML'e giren her dinamik değer
+`escapeHtml`'den geçer, ortak iskelet `mailLayout()`'tur.
+
+```ts
+await this.mail.send({ to: user.email, ...appointmentReminderMail({ ... }) });
+```
+
+Sürücü `MAIL_DRIVER` ile seçilir:
+
+| Sürücü    | Ne yapar                                                                   |
+| --------- | -------------------------------------------------------------------------- |
+| `console` | Göndermez, maili loga yazar. Geliştirme içindir; production'da reddedilir. |
+| `resend`  | [Resend](https://resend.com) API'siyle gönderir; `RESEND_API_KEY` ister.   |
+
+Başka bir sağlayıcı için `core/mail/transports/`'a `MailTransport`'u uygulayan
+bir sınıf ekleyip `MAIL_DRIVER`'a bir değer eklemek yeterli; mail gönderen kod
+değişmez. Kuyruk yok: mail, işlem commit'lendikten sonra istek içinde gönderilir;
+gönderim hatası işlemi geri almaz, loglanır.
 
 ## Loglama ve istek bağlamı
 
@@ -332,6 +374,10 @@ listeler.
 | `SESSION_CLEANUP_RETENTION_DAYS` | `7`           | Süresi dolmuş / kapatılmış oturumların saklanma süresi (gün)        |
 | `USER_ANONYMIZATION_AFTER_DAYS`  | `14`          | Silinen hesabın geri alınabileceği süre (gün)                       |
 | `AUDIT_RETENTION_DAYS`           | `730`         | Denetim kayıtlarının saklanma süresi (gün)                          |
+| `APP_URL`                        | **zorunlu**   | Maildeki linklerin gittiği web uygulamasının kök adresi             |
+| `MAIL_DRIVER`                    | `console`     | `console` · `resend`; production'da `console` kabul edilmez         |
+| `MAIL_FROM`                      | **zorunlu**   | Gönderen, ör. `Uygulama <no-reply@alanadi.com>`                     |
+| `RESEND_API_KEY`                 | —             | `MAIL_DRIVER=resend` ise zorunlu                                    |
 
 ## Zamanlanmış işler
 
@@ -393,7 +439,7 @@ Saatler `Europe/Istanbul` saat dilimindedir
 
 Bunlar bilerek eklenmedi; ihtiyaç duyan proje kendisi ekler:
 
-- Şifre sıfırlama, e-posta doğrulama (mail altyapısı ister)
+- E-posta doğrulama (mail altyapısı hazır; token ve akış projeye göre eklenir)
 - MFA ve CAPTCHA (dış servis ister)
 - Profil güncelleme, kullanıcı listeleme, admin atama gibi CRUD endpoint'leri
 - Cache, dosya yükleme, i18n, Docker, Redis
