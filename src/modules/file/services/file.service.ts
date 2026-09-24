@@ -185,30 +185,39 @@ export class FileService {
   async createDownloadUrl({
     fileId,
     disposition,
+    variant,
   }: {
     fileId: string;
     disposition: 'inline' | 'attachment';
+    variant?: string;
   }): Promise<DownloadUrl> {
     const file = await this.prisma.storedFile.findFirst({
       where: { id: fileId, status: StoredFileStatus.READY },
     });
 
-    if (!file?.key) {
+    const key = variant
+      ? file?.variants &&
+        storedFileVariantsSchema
+          .parse(file.variants)
+          .find((entry) => entry.name === variant)?.key
+      : file?.key;
+
+    if (!file || !key) {
       throw fileNotFoundError();
     }
 
     if (file.visibility === StoredFileVisibility.PUBLIC) {
-      return { url: this.publicUrl(file.key), expiresAt: null };
+      return { url: this.publicUrl(key), expiresAt: null };
     }
 
     const url = await this.storage.presignGet({
       bucket: this.privateBucket(),
-      key: file.key,
+      key,
       expiresInSeconds: FILE_DOWNLOAD_URL_TTL_SECONDS,
       responseContentType: file.contentType,
       responseContentDisposition: contentDisposition(
         disposition,
-        file.originalName,
+        downloadName(file.originalName, key),
       ),
     });
 
@@ -632,6 +641,13 @@ function sanitizeFileName(fileName: string | undefined): string | null {
   return cleaned.length > 0 ? cleaned : null;
 }
 
+function downloadName(originalName: string | null, key: string): string | null {
+  const storedExtension = /\.[a-z0-9]+$/.exec(key)?.[0];
+  if (!originalName || !storedExtension) return originalName;
+
+  return `${originalName.replace(/\.[^.]*$/, '')}${storedExtension}`;
+}
+
 function contentDisposition(
   type: 'inline' | 'attachment',
   fileName: string | null,
@@ -640,7 +656,7 @@ function contentDisposition(
 
   const asciiFallback = fileName
     .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^\x20-\x7e]/g, '_');
   const encoded = encodeURIComponent(fileName).replace(
     /['()*]/g,
