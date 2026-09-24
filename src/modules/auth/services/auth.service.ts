@@ -119,7 +119,6 @@ export class AuthService implements OnModuleInit {
       await this.audit.record({
         event: AUTH_AUDIT.AUTHN_LOGIN,
         outcome: AuditOutcome.FAILURE,
-        actorId: user?.id,
         subjectId: user?.id,
         targetType: user ? AUDIT_TARGET.USER : undefined,
         targetId: user?.id,
@@ -240,7 +239,6 @@ export class AuthService implements OnModuleInit {
       await this.audit.record({
         event: AUTH_AUDIT.AUTHN_PASSWORD_CHANGE,
         outcome: AuditOutcome.FAILURE,
-        actorId: user.id,
         subjectId: user.id,
         targetType: AUDIT_TARGET.USER,
         targetId: user.id,
@@ -279,7 +277,6 @@ export class AuthService implements OnModuleInit {
       await this.audit.record(
         {
           event: AUTH_AUDIT.AUTHN_PASSWORD_CHANGE,
-          actorId: user.id,
           subjectId: user.id,
           targetType: AUDIT_TARGET.USER,
           targetId: user.id,
@@ -331,7 +328,6 @@ export class AuthService implements OnModuleInit {
         {
           event: AUTH_AUDIT.AUTHN_LOGIN_LOCK,
           outcome: AuditOutcome.FAILURE,
-          actorId: userId,
           subjectId: userId,
           targetType: AUDIT_TARGET.USER,
           targetId: userId,

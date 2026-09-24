@@ -194,7 +194,6 @@ export class SessionService {
     await this.audit.record(
       {
         event: AUTH_AUDIT.SESSION_REVOKED,
-        actorId: userId,
         subjectId: userId,
         targetType: AUDIT_TARGET.USER,
         targetId: userId,
@@ -216,7 +215,6 @@ export class SessionService {
     await this.audit.record(
       {
         event: AUTH_AUDIT.SESSION_REVOKED,
-        actorId: userId,
         subjectId: userId,
         targetType: AUDIT_TARGET.USER,
         targetId: userId,
@@ -268,7 +266,6 @@ export class SessionService {
         {
           event: AUTH_AUDIT.SESSION_TOKEN_REUSE,
           outcome: AuditOutcome.FAILURE,
-          actorId: userId,
           subjectId: userId,
           targetType: AUDIT_TARGET.USER,
           targetId: userId,

@@ -38,8 +38,10 @@ Paylaşılan yardımcı için de asla; o `common/`'a taşınır.
   "Metot uzadı" ve "ileride lazım olur" geçerli gerekçe değil — her çıkarma
   okuyucuya bir sıçrama maliyeti yükler.
 - Yan yana aynı tipte iki parametre varsa girdiyi tek nesneye topla.
-- İstek bilgisi (`requestId`, `ip`, `userAgent`, `userId`) parametreyle taşınmaz;
-  servis `ClsService`'ten okur.
+- İstek meta verisi (`requestId`, `ip`, `userAgent`, cihaz) parametreyle
+  taşınmaz; servis `ClsService`'ten okur. İşlemin kimin hesabında yapıldığı ise
+  domain girdisidir: controller `@CurrentUser()` ile alır, servise parametre
+  olarak verir.
 - Başka bir servisin transaction'ına katılması gereken yazma metodu son
   parametrede `Prisma.TransactionClient` alır; varsayılansızsa yalnızca bir
   transaction içinde anlamlıdır.
@@ -134,6 +136,10 @@ spec içinde benzersiz olmalı. Fiil + kaynak yaz (`listSessions`, `revokeSessio
   gelir.
 - `actorId` kim yaptı, `subjectId` kimin hakkında, `target*` neye dokunuldu.
   `subjectId` elle verilir — vermezsen olay kullanıcının güvenlik günlüğüne düşmez.
+  Korumalı istekte `actorId`'yi verme, `AuditService` CLS'ten alır. Açık
+  endpoint'te yalnızca kimlik o istekte kanıtlandıysa ver (kayıt, başarılı giriş,
+  logout); kanıtlanmadıysa (başarısız giriş, token tekrar kullanımı, sistem işi)
+  boş kalır.
 - `metadata` makine okuru taşır: enum, sayı, id, sebep kodu. Ham kullanıcı girdisi
   girmez; kişisel verinin yeri ayrılmış kolonlar ya da modülün kendi tablosudur.
 

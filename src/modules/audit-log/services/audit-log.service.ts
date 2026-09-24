@@ -45,11 +45,13 @@ export class AuditLogService {
   }
 
   async anonymize(
-    actorId: string,
+    userId: string,
     client: Prisma.TransactionClient,
   ): Promise<void> {
     await client.auditLog.updateMany({
-      where: { actorId },
+      where: {
+        OR: [{ actorId: userId }, { subjectId: userId, actorId: null }],
+      },
       data: { ip: null, userAgent: null },
     });
   }

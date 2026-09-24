@@ -246,11 +246,11 @@ sonuç ayrı bir `outcome` alanındadır (`SUCCESS` / `FAILURE`).
 
 Her kayıt üç kimlik taşır:
 
-| Alan                     | Anlamı              |
-| ------------------------ | ------------------- |
-| `actorId`                | İşlemi kim yaptı    |
-| `subjectId`              | Olay kimin hakkında |
-| `targetType`, `targetId` | Neye dokunuldu      |
+| Alan                     | Anlamı                                         |
+| ------------------------ | ---------------------------------------------- |
+| `actorId`                | İşlemi kim yaptı (kimliği doğrulanmadıysa boş) |
+| `subjectId`              | Olay kimin hakkında                            |
+| `targetType`, `targetId` | Neye dokunuldu                                 |
 
 Kullanıcı `/users/me/security-log`'da hesabına dair olayları görür (ör. kendi
 hesabına yapılan başarısız giriş denemeleri). Admin `/admin/audit-logs`'ta
