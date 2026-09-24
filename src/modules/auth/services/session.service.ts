@@ -204,6 +204,28 @@ export class SessionService {
     );
   }
 
+  async revokeOthers(
+    { userId, keepSessionId }: { userId: string; keepSessionId: string },
+    client: Prisma.TransactionClient = this.prisma,
+  ): Promise<void> {
+    const revoked = await client.session.updateMany({
+      where: { userId, revokedAt: null, id: { not: keepSessionId } },
+      data: { revokedAt: new Date() },
+    });
+
+    await this.audit.record(
+      {
+        event: AUTH_AUDIT.SESSION_REVOKED,
+        actorId: userId,
+        subjectId: userId,
+        targetType: AUDIT_TARGET.USER,
+        targetId: userId,
+        metadata: { scope: 'others', count: revoked.count },
+      },
+      client,
+    );
+  }
+
   async anonymize(
     userId: string,
     client: Prisma.TransactionClient,

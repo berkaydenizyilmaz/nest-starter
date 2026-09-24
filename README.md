@@ -115,21 +115,22 @@ Katman, adlandırma ve yazım kurallarının tamamı `CLAUDE.md`'de.
 
 Bütün yollar `/api` ile başlar; iş endpoint'leri `v1` altındadır.
 
-| Method   | Yol                             | Erişim | Açıklama                                |
-| -------- | ------------------------------- | ------ | --------------------------------------- |
-| `POST`   | `/api/v1/auth/register`         | açık   | Kayıt; token çifti döner                |
-| `POST`   | `/api/v1/auth/login`            | açık   | Giriş; token çifti ve `reactivated`     |
-| `POST`   | `/api/v1/auth/refresh`          | açık   | Refresh token ile yeni token çifti      |
-| `POST`   | `/api/v1/auth/logout`           | açık   | Refresh token'ın oturumunu kapatır      |
-| `GET`    | `/api/v1/auth/sessions`         | bearer | Aktif oturumlar; mevcut olan işaretli   |
-| `DELETE` | `/api/v1/auth/sessions/:id`     | bearer | Tek oturumu kapatır                     |
-| `DELETE` | `/api/v1/auth/sessions`         | bearer | Bütün oturumları kapatır                |
-| `GET`    | `/api/v1/users/me`              | bearer | Profil                                  |
-| `GET`    | `/api/v1/users/me/security-log` | bearer | Hesaba dair olaylar (cursor sayfalı)    |
-| `DELETE` | `/api/v1/users/me`              | bearer | Hesabı siler (geri alınabilir)          |
-| `GET`    | `/api/v1/admin/audit-logs`      | admin  | Denetim kayıtları (filtreli, sayfalı)   |
-| `GET`    | `/api/health/live`              | açık   | Süreç ayakta mı                         |
-| `GET`    | `/api/health/ready`             | açık   | Veritabanı erişilebilir mi; değilse 503 |
+| Method   | Yol                             | Erişim | Açıklama                                     |
+| -------- | ------------------------------- | ------ | -------------------------------------------- |
+| `POST`   | `/api/v1/auth/register`         | açık   | Kayıt; token çifti döner                     |
+| `POST`   | `/api/v1/auth/login`            | açık   | Giriş; token çifti ve `reactivated`          |
+| `POST`   | `/api/v1/auth/refresh`          | açık   | Refresh token ile yeni token çifti           |
+| `POST`   | `/api/v1/auth/logout`           | açık   | Refresh token'ın oturumunu kapatır           |
+| `POST`   | `/api/v1/auth/password/change`  | bearer | Şifreyi değiştirir; diğer oturumları kapatır |
+| `GET`    | `/api/v1/auth/sessions`         | bearer | Aktif oturumlar; mevcut olan işaretli        |
+| `DELETE` | `/api/v1/auth/sessions/:id`     | bearer | Tek oturumu kapatır                          |
+| `DELETE` | `/api/v1/auth/sessions`         | bearer | Bütün oturumları kapatır                     |
+| `GET`    | `/api/v1/users/me`              | bearer | Profil                                       |
+| `GET`    | `/api/v1/users/me/security-log` | bearer | Hesaba dair olaylar (cursor sayfalı)         |
+| `DELETE` | `/api/v1/users/me`              | bearer | Hesabı siler (geri alınabilir)               |
+| `GET`    | `/api/v1/admin/audit-logs`      | admin  | Denetim kayıtları (filtreli, sayfalı)        |
+| `GET`    | `/api/health/live`              | açık   | Süreç ayakta mı                              |
+| `GET`    | `/api/health/ready`             | açık   | Veritabanı erişilebilir mi; değilse 503      |
 
 İstemci isteğe bağlı olarak `x-device-name` (oturum listesinde görünen cihaz
 adı) ve `x-request-id` (log korelasyonu; `[A-Za-z0-9._-]`, en fazla 128
@@ -204,9 +205,15 @@ refresh ile uzamaz; süre dolunca kullanıcı yeniden giriş yapar.
 zamanını tutar. Kullanıcı başına en fazla 10 aktif oturum kalır; yenisi
 açıldığında en uzun süredir kullanılmayan kapanır.
 
+**Şifre değiştirme.** Giriş yapmış kullanıcı mevcut şifresini vererek yenisini
+belirler. Bu cihazdaki oturum açık kalır, diğer bütün oturumlar kapanır. Mevcut
+şifre yanlışsa cevap `401` değil `422 INVALID_CURRENT_PASSWORD` olur; `401`
+istemcide "oturum düştü" diye yorumlanıp kullanıcıyı atardı.
+
 **İptalin sınırı.** Oturum kapatmak refresh'i hemen keser ama access token
 stateless doğrulandığı için ömrü dolana kadar (`JWT_ACCESS_TTL`, varsayılan 15
-dakika) geçerli kalır. Aynısı çalınma tespitinde de geçerlidir.
+dakika) geçerli kalır. Aynısı çalınma tespitinde ve şifre değiştirmede de
+geçerlidir.
 
 **Refresh token'ı nerede saklamalı?** Token cevap gövdesinde döner; saklamak
 istemcinin işidir. Sunucu tarafı olan bir web uygulamasında (Next.js gibi)
@@ -261,8 +268,8 @@ değer taşır (enum, sayı, id); ham kullanıcı girdisi girmez. Kayıtlar
 **Rate limit** tek bir kaynaktan gelen seli durdurur. Korumalı endpoint'lerde
 kullanıcıya, açık endpoint'lerde IP'ye göre sayar. Sayaç **endpoint başına**
 tutulur: `THROTTLE_LIMIT=100`, her endpoint için pencere başına 100 istek
-demektir. `/auth/login` ve `/auth/register` dakikada 5 istekle sınırlı.
-Health endpoint'leri limitten muaf.
+demektir. `/auth/login`, `/auth/register` ve `/auth/password/change` dakikada 5
+istekle sınırlı. Health endpoint'leri limitten muaf.
 
 **Hesap kilidi** binlerce IP'den tek hesaba yapılan denemeyi yavaşlatır. Üç
 başarısız girişten sonra her yeni başarısızlık hesabın girişini kademeli olarak
@@ -386,7 +393,7 @@ Saatler `Europe/Istanbul` saat dilimindedir
 
 Bunlar bilerek eklenmedi; ihtiyaç duyan proje kendisi ekler:
 
-- Şifre değiştirme, şifre sıfırlama, e-posta doğrulama (mail altyapısı ister)
+- Şifre sıfırlama, e-posta doğrulama (mail altyapısı ister)
 - MFA ve CAPTCHA (dış servis ister)
 - Profil güncelleme, kullanıcı listeleme, admin atama gibi CRUD endpoint'leri
 - Cache, dosya yükleme, i18n, Docker, Redis

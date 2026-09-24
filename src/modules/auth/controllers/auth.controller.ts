@@ -6,15 +6,25 @@ import {
   Post,
   SerializeOptions,
 } from '@nestjs/common';
-import { ApiCreatedResponse, ApiOkResponse } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import type { AuthUser } from '../../../common/auth-user.type.js';
 import { ApiErrors } from '../../../common/decorators/api-errors.decorator.js';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator.js';
 import { Public } from '../../../common/decorators/public.decorator.js';
 import {
   AUTH_THROTTLE_LIMIT,
   AUTH_THROTTLE_TTL_MS,
 } from '../auth.constants.js';
 import { AuthService } from '../services/auth.service.js';
+import {
+  type ChangePasswordRequest,
+  changePasswordRequestSchema,
+} from '../dto/request/change-password.request.js';
 import {
   type LoginRequest,
   loginRequestSchema,
@@ -101,5 +111,23 @@ export class AuthController {
     @Body({ schema: refreshRequestSchema }) dto: RefreshRequest,
   ): Promise<void> {
     return this.auth.logout(dto.refreshToken);
+  }
+
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Post('password/change')
+  @Throttle({
+    default: { ttl: AUTH_THROTTLE_TTL_MS, limit: AUTH_THROTTLE_LIMIT },
+  })
+  @ApiErrors(
+    HttpStatus.UNPROCESSABLE_ENTITY,
+    HttpStatus.UNAUTHORIZED,
+    HttpStatus.TOO_MANY_REQUESTS,
+  )
+  changePassword(
+    @CurrentUser() user: AuthUser,
+    @Body({ schema: changePasswordRequestSchema }) dto: ChangePasswordRequest,
+  ): Promise<void> {
+    return this.auth.changePassword(user, dto);
   }
 }
