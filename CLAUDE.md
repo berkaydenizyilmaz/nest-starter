@@ -11,11 +11,17 @@
 - Bir parça nereye ait? İçinde bir modüle ait mantık varsa o modüle, yoksa
   `common/`'a; altyapıysa `core/`'a. `RolesGuard` yalnızca metadata karşılaştırır
   → `common/`; `JwtAuthGuard` auth secret'ını bilir → `modules/auth/`.
-- Kesitsel ihtiyaçlar (denetim, mail, kuyruk, doğrulama token'ı ve sonradan
-  gelecek her benzeri) `core/`'da domain bilmeyen bir servistir: `core`
-  mekanizmayı bilir, içeriği ve adları modül verir. Yeni bir ihtiyaçta önce
-  `core/`'a bak; yoksa aynı ilkeyle `core/`'a ekle, bir modülün içine gömme.
-  Modüller altyapının tablolarına doğrudan dokunmaz.
+- Kesitsel bir ihtiyacın (denetim, mail, kuyruk, doğrulama token'ı, dosya
+  depolama ve her benzeri) mekanizması `core/`'da domain bilmeyen bir
+  servistir; içeriği ve adları modül verir. Yeni ihtiyaçta önce `core/`'a bak,
+  bir iş modülüne gömme. Core servisi `DomainError` fırlatmaz, sonucu durum
+  olarak döndürür; aynı sonucun anlamı akışa göre değiştiği için hata koduna
+  çağıran modül çevirir.
+- İhtiyacın istemciye açılan kendi sözleşmesi (endpoint, hata kodu, zamanlanmış
+  iş) varsa mekanizmanın üstüne genel bir modül kurulur (`audit-log`, `file`);
+  diğer modüller ona public servisiyle bağlanır.
+- Bir tabloya yazan kod onun sahibidir, başkası servisini kullanır. Core'un
+  yazdığı kaydı sorgulayan genel modül istisnadır.
 - Kod yazım stili, dosya düzeni ve adlandırma için `modules/auth/`'a bak; o modül
   her senaryonun şablonu değil. Örnek ile kural çeliştiğinde bu dosya geçerlidir.
 
