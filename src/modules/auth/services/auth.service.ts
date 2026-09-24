@@ -6,14 +6,12 @@ import {
   ConflictError,
   TooManyRequestsError,
   UnauthorizedError,
-  ValidationError,
 } from '../../../common/domain.error.js';
 import { MS_PER_SECOND } from '../../../common/constants/time.constants.js';
 import { unusablePasswordHash } from '../../../common/utils/password.util.js';
 import type { Env } from '../../../config/env.schema.js';
 import { PrismaService } from '../../../core/prisma/prisma.service.js';
 import { AUDIT_TARGET } from '../../../common/constants/audit.constants.js';
-import type { AuthUser } from '../../../common/auth-user.type.js';
 import { AuditService } from '../../../core/audit/audit.service.js';
 import {
   AuditOutcome,
@@ -30,7 +28,6 @@ import {
 } from '../auth.constants.js';
 import type { AccessTokenPayload } from '../access-token.schema.js';
 import type { IssuedTokens, LoginResult, TokenSubject } from '../auth.types.js';
-import type { ChangePasswordRequest } from '../dto/request/change-password.request.js';
 import type { LoginRequest } from '../dto/request/login.request.js';
 import type { RegisterRequest } from '../dto/request/register.request.js';
 import { SessionService } from './session.service.js';
@@ -217,75 +214,6 @@ export class AuthService implements OnModuleInit {
     });
   }
 
-  async changePassword(
-    user: AuthUser,
-    input: ChangePasswordRequest,
-  ): Promise<void> {
-    const account = await this.prisma.user.findFirst({
-      where: { id: user.id, deletedAt: null },
-      select: { passwordHash: true },
-    });
-
-    if (!account) {
-      throw accountDeletedError();
-    }
-
-    const passwordMatches = await argon2.verify(
-      account.passwordHash,
-      input.currentPassword,
-    );
-
-    if (!passwordMatches) {
-      await this.audit.record({
-        event: AUTH_AUDIT.AUTHN_PASSWORD_CHANGE,
-        outcome: AuditOutcome.FAILURE,
-        subjectId: user.id,
-        targetType: AUDIT_TARGET.USER,
-        targetId: user.id,
-      });
-
-      throw new ValidationError(
-        AUTH_ERROR.INVALID_CURRENT_PASSWORD,
-        'Current password is incorrect',
-        [
-          {
-            field: 'currentPassword',
-            code: AUTH_ERROR.INVALID_CURRENT_PASSWORD,
-            message: 'Current password is incorrect',
-          },
-        ],
-      );
-    }
-
-    const passwordHash = await argon2.hash(input.newPassword);
-
-    await this.prisma.$transaction(async (tx) => {
-      const changed = await tx.user.updateMany({
-        where: { id: user.id, deletedAt: null },
-        data: { passwordHash },
-      });
-
-      if (changed.count === 0) {
-        throw accountDeletedError();
-      }
-
-      await this.sessions.revokeOthers(
-        { userId: user.id, keepSessionId: user.sessionId },
-        tx,
-      );
-
-      await this.audit.record(
-        {
-          event: AUTH_AUDIT.AUTHN_PASSWORD_CHANGE,
-          subjectId: user.id,
-          targetType: AUDIT_TARGET.USER,
-          targetId: user.id,
-        },
-        tx,
-      );
-    });
-  }
-
   private async recordLoginFailure(userId: string): Promise<void> {
     const now = new Date();
 
@@ -382,12 +310,5 @@ function invalidCredentialsError(): UnauthorizedError {
   return new UnauthorizedError(
     AUTH_ERROR.INVALID_CREDENTIALS,
     'Invalid email or password',
-  );
-}
-
-function accountDeletedError(): UnauthorizedError {
-  return new UnauthorizedError(
-    AUTH_ERROR.ACCOUNT_DELETED,
-    'Account is no longer active',
   );
 }

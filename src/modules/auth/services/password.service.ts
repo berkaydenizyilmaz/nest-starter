@@ -2,13 +2,18 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import argon2 from 'argon2';
 import { PinoLogger } from 'nestjs-pino';
+import type { AuthUser } from '../../../common/auth-user.type.js';
 import { AUDIT_TARGET } from '../../../common/constants/audit.constants.js';
 import { MS_PER_MINUTE } from '../../../common/constants/time.constants.js';
-import { ValidationError } from '../../../common/domain.error.js';
+import {
+  UnauthorizedError,
+  ValidationError,
+} from '../../../common/domain.error.js';
 import type { Env } from '../../../config/env.schema.js';
 import { AuditService } from '../../../core/audit/audit.service.js';
 import { MailService } from '../../../core/mail/mail.service.js';
 import { PrismaService } from '../../../core/prisma/prisma.service.js';
+import { AuditOutcome } from '../../../generated/prisma/client.js';
 import {
   AUTH_AUDIT,
   AUTH_ERROR,
@@ -17,13 +22,14 @@ import {
   PASSWORD_RESET_TOKEN_BYTES,
   PASSWORD_RESET_TTL_MS,
 } from '../auth.constants.js';
+import type { ChangePasswordRequest } from '../dto/request/change-password.request.js';
 import type { ResetPasswordRequest } from '../dto/request/reset-password.request.js';
 import { passwordResetMail } from '../mails/password-reset.mail.js';
 import { createOpaqueToken, hashOpaqueToken } from '../opaque-token.util.js';
 import { SessionService } from './session.service.js';
 
 @Injectable()
-export class PasswordResetService {
+export class PasswordService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService<Env, true>,
@@ -32,10 +38,76 @@ export class PasswordResetService {
     private readonly mail: MailService,
     private readonly logger: PinoLogger,
   ) {
-    this.logger.setContext(PasswordResetService.name);
+    this.logger.setContext(PasswordService.name);
   }
 
-  async request(email: string): Promise<void> {
+  async change(user: AuthUser, input: ChangePasswordRequest): Promise<void> {
+    const account = await this.prisma.user.findFirst({
+      where: { id: user.id, deletedAt: null },
+      select: { passwordHash: true },
+    });
+
+    if (!account) {
+      throw accountDeletedError();
+    }
+
+    const passwordMatches = await argon2.verify(
+      account.passwordHash,
+      input.currentPassword,
+    );
+
+    if (!passwordMatches) {
+      await this.audit.record({
+        event: AUTH_AUDIT.AUTHN_PASSWORD_CHANGE,
+        outcome: AuditOutcome.FAILURE,
+        subjectId: user.id,
+        targetType: AUDIT_TARGET.USER,
+        targetId: user.id,
+      });
+
+      throw new ValidationError(
+        AUTH_ERROR.INVALID_CURRENT_PASSWORD,
+        'Current password is incorrect',
+        [
+          {
+            field: 'currentPassword',
+            code: AUTH_ERROR.INVALID_CURRENT_PASSWORD,
+            message: 'Current password is incorrect',
+          },
+        ],
+      );
+    }
+
+    const passwordHash = await argon2.hash(input.newPassword);
+
+    await this.prisma.$transaction(async (tx) => {
+      const changed = await tx.user.updateMany({
+        where: { id: user.id, deletedAt: null },
+        data: { passwordHash },
+      });
+
+      if (changed.count === 0) {
+        throw accountDeletedError();
+      }
+
+      await this.sessions.revokeOthers(
+        { userId: user.id, keepSessionId: user.sessionId },
+        tx,
+      );
+
+      await this.audit.record(
+        {
+          event: AUTH_AUDIT.AUTHN_PASSWORD_CHANGE,
+          subjectId: user.id,
+          targetType: AUDIT_TARGET.USER,
+          targetId: user.id,
+        },
+        tx,
+      );
+    });
+  }
+
+  async requestReset(email: string): Promise<void> {
     const user = await this.prisma.user.findFirst({
       where: { email, anonymizedAt: null },
       select: {
@@ -101,7 +173,7 @@ export class PasswordResetService {
     }
   }
 
-  async complete(input: ResetPasswordRequest): Promise<void> {
+  async reset(input: ResetPasswordRequest): Promise<void> {
     const stored = await this.prisma.passwordResetToken.findUnique({
       where: { tokenHash: hashOpaqueToken(input.token) },
       include: { user: { select: { anonymizedAt: true } } },
@@ -176,5 +248,12 @@ function invalidResetTokenError(): ValidationError {
         message: 'Reset token is invalid',
       },
     ],
+  );
+}
+
+function accountDeletedError(): UnauthorizedError {
+  return new UnauthorizedError(
+    AUTH_ERROR.ACCOUNT_DELETED,
+    'Account is no longer active',
   );
 }

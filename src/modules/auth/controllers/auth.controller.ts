@@ -21,7 +21,7 @@ import {
   AUTH_THROTTLE_TTL_MS,
 } from '../auth.constants.js';
 import { AuthService } from '../services/auth.service.js';
-import { PasswordResetService } from '../services/password-reset.service.js';
+import { PasswordService } from '../services/password.service.js';
 import {
   type ChangePasswordRequest,
   changePasswordRequestSchema,
@@ -59,7 +59,7 @@ import {
 export class AuthController {
   constructor(
     private readonly auth: AuthService,
-    private readonly passwordResets: PasswordResetService,
+    private readonly passwords: PasswordService,
   ) {}
 
   @Public()
@@ -140,7 +140,7 @@ export class AuthController {
     @CurrentUser() user: AuthUser,
     @Body({ schema: changePasswordRequestSchema }) dto: ChangePasswordRequest,
   ): Promise<void> {
-    return this.auth.changePassword(user, dto);
+    return this.passwords.change(user, dto);
   }
 
   @Public()
@@ -153,7 +153,7 @@ export class AuthController {
   requestPasswordReset(
     @Body({ schema: forgotPasswordRequestSchema }) dto: ForgotPasswordRequest,
   ): Promise<void> {
-    return this.passwordResets.request(dto.email);
+    return this.passwords.requestReset(dto.email);
   }
 
   @Public()
@@ -166,6 +166,6 @@ export class AuthController {
   resetPassword(
     @Body({ schema: resetPasswordRequestSchema }) dto: ResetPasswordRequest,
   ): Promise<void> {
-    return this.passwordResets.complete(dto);
+    return this.passwords.reset(dto);
   }
 }
