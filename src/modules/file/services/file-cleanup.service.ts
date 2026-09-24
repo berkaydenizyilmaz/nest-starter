@@ -18,6 +18,7 @@ import {
 import {
   FILE_PENDING_TTL_MS,
   FILE_SWEEP_BATCH_SIZE,
+  FILE_SWEEP_MAX_DURATION_MS,
   FILE_UNUSED_GRACE_MS,
 } from '../file.constants.js';
 import { bucketFor, incomingKey, objectPrefix } from '../file-location.util.js';
@@ -33,6 +34,7 @@ interface SweepCandidate {
   id: string;
   purpose: string;
   visibility: StoredFileVisibility;
+  createdAt: string;
 }
 
 const SAFE_ON_DELETE_ACTIONS = new Set(['r', 'a']);
@@ -68,61 +70,66 @@ export class FileCleanupService implements OnApplicationBootstrap {
 
   async removeUnused(): Promise<{ removed: number; skipped: number }> {
     const removable = await this.removableCondition();
-    const now = Date.now();
-    const pendingBefore = new Date(now - FILE_PENDING_TTL_MS).toISOString();
-    const unusedBefore = new Date(now - FILE_UNUSED_GRACE_MS).toISOString();
-
-    const candidates = await this.prisma.$queryRawUnsafe<SweepCandidate[]>(
-      `SELECT f.id, f.purpose, f.visibility::text AS "visibility"
-       FROM "StoredFile" f
-       WHERE ${removable}
-       ORDER BY f."createdAt"
-       LIMIT $3`,
-      pendingBefore,
-      unusedBefore,
-      FILE_SWEEP_BATCH_SIZE,
-    );
+    const startedAt = Date.now();
+    const pendingBefore = new Date(
+      startedAt - FILE_PENDING_TTL_MS,
+    ).toISOString();
+    const unusedBefore = new Date(
+      startedAt - FILE_UNUSED_GRACE_MS,
+    ).toISOString();
 
     let removed = 0;
     let skipped = 0;
+    let cursor: SweepCandidate | undefined;
 
-    for (const file of candidates) {
-      try {
-        const deleted = await this.prisma.$transaction(async (tx) => {
-          const count = await tx.$executeRawUnsafe(
-            `DELETE FROM "StoredFile" f WHERE f.id = $3 AND (${removable})`,
+    for (;;) {
+      if (Date.now() - startedAt >= FILE_SWEEP_MAX_DURATION_MS) {
+        this.logger.warn(
+          { removed, skipped },
+          'File sweep reached its time limit; the rest waits for the next run',
+        );
+        break;
+      }
+
+      const batch = await this.prisma.$queryRawUnsafe<SweepCandidate[]>(
+        `SELECT f.id, f.purpose, f.visibility::text AS "visibility",
+                f."createdAt"::text AS "createdAt"
+         FROM "StoredFile" f
+         WHERE (${removable})
+           AND ($4::timestamp(3) IS NULL OR (f."createdAt", f.id) > ($4::timestamp(3), $5))
+         ORDER BY f."createdAt", f.id
+         LIMIT $3`,
+        pendingBefore,
+        unusedBefore,
+        FILE_SWEEP_BATCH_SIZE,
+        cursor?.createdAt ?? null,
+        cursor?.id ?? null,
+      );
+
+      for (const file of batch) {
+        try {
+          const deleted = await this.removeOne(file, {
+            removable,
             pendingBefore,
             unusedBefore,
-            file.id,
-          );
+          });
 
-          if (count === 0) return false;
-
-          await this.queue.send(
-            fileObjectDeleteJob,
-            {
-              fileId: file.id,
-              purpose: file.purpose,
-              visibility: file.visibility,
-              scope: 'all',
-            },
-            tx,
-          );
-          return true;
-        });
-
-        if (deleted) {
-          removed++;
-        } else {
+          if (deleted) {
+            removed++;
+          } else {
+            skipped++;
+          }
+        } catch (error) {
           skipped++;
+          this.logger.warn(
+            { err: error, fileId: file.id },
+            'Unused file could not be removed',
+          );
         }
-      } catch (error) {
-        skipped++;
-        this.logger.warn(
-          { err: error, fileId: file.id },
-          'Unused file could not be removed',
-        );
       }
+
+      if (batch.length < FILE_SWEEP_BATCH_SIZE) break;
+      cursor = batch.at(-1);
     }
 
     return { removed, skipped };
@@ -145,6 +152,38 @@ export class FileCleanupService implements OnApplicationBootstrap {
         objectPrefix(purpose, fileId),
       );
     }
+  }
+
+  private removeOne(
+    file: SweepCandidate,
+    {
+      removable,
+      pendingBefore,
+      unusedBefore,
+    }: { removable: string; pendingBefore: string; unusedBefore: string },
+  ): Promise<boolean> {
+    return this.prisma.$transaction(async (tx) => {
+      const count = await tx.$executeRawUnsafe(
+        `DELETE FROM "StoredFile" f WHERE f.id = $3 AND (${removable})`,
+        pendingBefore,
+        unusedBefore,
+        file.id,
+      );
+
+      if (count === 0) return false;
+
+      await this.queue.send(
+        fileObjectDeleteJob,
+        {
+          fileId: file.id,
+          purpose: file.purpose,
+          visibility: file.visibility,
+          scope: 'all',
+        },
+        tx,
+      );
+      return true;
+    });
   }
 
   private async removableCondition(): Promise<string> {

@@ -14,6 +14,7 @@ export const FILE_THROTTLE_LIMIT = 20;
 export const FILE_PENDING_TTL_MS = 24 * 60 * 60 * 1000;
 export const FILE_UNUSED_GRACE_MS = 24 * 60 * 60 * 1000;
 export const FILE_SWEEP_BATCH_SIZE = 500;
+export const FILE_SWEEP_MAX_DURATION_MS = 10 * 60 * 1000;
 
 export const FILE_JOB = {
   FILE_OBJECT_DELETE: 'file.object-delete',
