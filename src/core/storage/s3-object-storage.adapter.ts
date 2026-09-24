@@ -23,11 +23,13 @@ import type {
 import { S3_DELETE_BATCH_SIZE } from './storage.constants.js';
 import {
   ObjectChangedError,
+  ObjectMissingError,
   ObjectStorageUnavailableError,
 } from './storage.error.js';
 
 const HTTP_NOT_FOUND = 404;
 const HTTP_PRECONDITION_FAILED = 412;
+const NO_SUCH_KEY = 'NoSuchKey';
 const HTTP_SERVER_ERROR = 500;
 const TRANSIENT_ERROR_NAMES = new Set(['AbortError', 'TimeoutError']);
 
@@ -222,6 +224,10 @@ function translate(error: unknown, key: string): unknown {
 
   if (status === HTTP_PRECONDITION_FAILED) {
     return new ObjectChangedError(key, { cause: error });
+  }
+
+  if (error instanceof S3ServiceException && error.name === NO_SUCH_KEY) {
+    return new ObjectMissingError(key, { cause: error });
   }
 
   const transient =

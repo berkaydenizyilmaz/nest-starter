@@ -32,6 +32,7 @@ import {
   ImageProcessorBusyError,
   InvalidImageError,
   ObjectChangedError,
+  ObjectMissingError,
   ObjectStorageUnavailableError,
 } from '../../../core/storage/storage.error.js';
 import {
@@ -172,6 +173,9 @@ export class FileService {
     try {
       stored = await this.store(file, purpose, signal);
     } catch (error) {
+      const finished = await this.resolveIfReady(file.id);
+      if (finished) return finished;
+
       throw await this.translateStoreError(error, file);
     }
 
@@ -307,11 +311,7 @@ export class FileService {
     const head = await this.storage.head(incoming, signal);
 
     if (!head) {
-      throw invalidInputError(
-        FILE_ERROR.FILE_NOT_UPLOADED,
-        'fileId',
-        'File has not been uploaded',
-      );
+      throw fileNotUploadedError();
     }
 
     if (head.size > purpose.maxBytes) {
@@ -469,13 +469,8 @@ export class FileService {
       return this.resolve({ ...file, ...stored });
     }
 
-    const current = await this.prisma.storedFile.findUnique({
-      where: { id: file.id },
-    });
-
-    if (current?.status === StoredFileStatus.READY) {
-      return this.resolve(current);
-    }
+    const finished = await this.resolveIfReady(file.id);
+    if (finished) return finished;
 
     await this.queue.send(fileObjectDeleteJob, {
       fileId: file.id,
@@ -484,6 +479,14 @@ export class FileService {
       scope: 'all',
     });
     throw fileNotFoundError();
+  }
+
+  private async resolveIfReady(fileId: string): Promise<ResolvedFile | null> {
+    const file = await this.prisma.storedFile.findFirst({
+      where: { id: fileId, status: StoredFileStatus.READY },
+    });
+
+    return file ? this.resolve(file) : null;
   }
 
   private async translateStoreError(
@@ -502,6 +505,10 @@ export class FileService {
       error.code !== FILE_ERROR.FILE_NOT_UPLOADED
     ) {
       return this.discard(file, error);
+    }
+
+    if (error instanceof ObjectMissingError) {
+      return fileNotUploadedError();
     }
 
     if (error instanceof ImageProcessorBusyError) {
@@ -649,6 +656,14 @@ function invalidInputError(
   message: string,
 ): ValidationError {
   return new ValidationError(code, message, [{ field, code, message }]);
+}
+
+function fileNotUploadedError(): ValidationError {
+  return invalidInputError(
+    FILE_ERROR.FILE_NOT_UPLOADED,
+    'fileId',
+    'File has not been uploaded',
+  );
 }
 
 function fileTooLargeError(field: string): ValidationError {

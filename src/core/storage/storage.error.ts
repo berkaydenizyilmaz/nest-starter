@@ -5,6 +5,13 @@ export class ObjectChangedError extends Error {
   }
 }
 
+export class ObjectMissingError extends Error {
+  constructor(key: string, options?: ErrorOptions) {
+    super(`Object ${key} does not exist`, options);
+    this.name = new.target.name;
+  }
+}
+
 export class ObjectStorageUnavailableError extends Error {
   constructor(options?: ErrorOptions) {
     super('Object storage is unreachable', options);
