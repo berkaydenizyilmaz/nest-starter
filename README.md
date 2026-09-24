@@ -430,6 +430,11 @@ avatarFile   StoredFile? @relation("UserAvatar", fields: [avatarFileId], referen
 @@index([avatarFileId])
 ```
 
+Dosya yalnızca FK kolonuyla gösterilebilir. Dizi (`String[]`), Json ya da metin
+içinde tutulan id veya URL süpürücüye görünmez ve dosya silinir. Birden fazla
+dosya için ara tablo açılır (`SalonPhoto { salonId, fileId }`); zengin metne
+gömülen her görsel için de böyle bir satır tutulur.
+
 Modüller dosya silmez, yalnızca bağlantıyı kaldırır. Günlük `file.sweep` işi
 tamamlanmamış yüklemeleri ve 24 saattir hiçbir kaydın göstermediği dosyaları
 siler; dosyayı gösteren kolonları PostgreSQL katalogundan kendisi bulur.
