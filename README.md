@@ -2,13 +2,13 @@
 
 Yeni bir backend projesine iş mantığından başlayabilmen için hazırlanmış bir
 iskelet. Kimlik doğrulama, oturum yönetimi, şifre sıfırlama, denetim kaydı,
-mail, arka plan işleri, hata yönetimi, doğrulama, loglama ve kötüye kullanım
-koruması kurulu ve birbirine bağlı gelir; sen yalnızca kendi modüllerini
-eklersin.
+mail, dosya yükleme, arka plan işleri, hata yönetimi, doğrulama, loglama ve
+kötüye kullanım koruması kurulu ve birbirine bağlı gelir; sen yalnızca kendi
+modüllerini eklersin.
 
 **Nest 12** (Express 5, ESM) · **Prisma 7** + PostgreSQL · **pg-boss** ·
 **Zod 4** · **pino** · **nestjs-cls** · **argon2** · **Resend** ·
-**oxlint**
+**S3 / Cloudflare R2** · **sharp** · **oxlint**
 
 ## İçindekiler
 
@@ -21,6 +21,7 @@ eklersin.
 - [Denetim kaydı](#denetim-kaydı)
 - [Kötüye kullanım koruması](#kötüye-kullanım-koruması)
 - [Mail](#mail)
+- [Dosya yükleme](#dosya-yükleme)
 - [Loglama ve istek bağlamı](#loglama-ve-istek-bağlamı)
 - [Yapılandırma](#yapılandırma)
 - [Arka plan işleri](#arka-plan-işleri)
@@ -32,7 +33,8 @@ eklersin.
 ## Hızlı başlangıç
 
 **Gerekenler:** Node.js LTS (**22.22.3+** veya **24.15+**; 23.x ve 25.x
-desteklenmiyor), pnpm ve PostgreSQL.
+desteklenmiyor), pnpm, PostgreSQL ve S3 uyumlu bir depolama (geliştirmede de
+gerçek bucket'lar kullanılır; kurulum için bkz. [Yayına alma](#yayına-alma)).
 
 ```bash
 git clone https://github.com/berkaydenizyilmaz/nest-starter.git yeni-proje
@@ -42,6 +44,7 @@ rm -rf .git && git init
 pnpm install                  # postinstall, Prisma client'ı üretir
 cp .env.example .env
 openssl rand -base64 48       # çıktıyı .env'deki JWT_ACCESS_SECRET'a yaz
+                              # .env'deki STORAGE_* değerlerini doldur
 
 pnpm exec prisma migrate dev  # şemayı veritabanına uygular
 pnpm start:dev
@@ -68,13 +71,15 @@ src/
 │   ├── mail/            MailService ve sürücüleri (console, resend)
 │   ├── queue/           pg-boss kuyruğu: QueueService, iş keşfi, zamanlamalar
 │   ├── one-time-token/  OneTimeTokenService: maille giden tek kullanımlık token'lar
+│   ├── storage/         Nesne depolama (S3/R2) ve görsel işleme; domain bilmez
 │   ├── logger.module.ts
 │   └── request-context.module.ts
 ├── common/          Modüllerin ortak dili: hata sınıfları, decorator'lar,
 │                    RolesGuard, RateLimitGuard, ortak şemalar, util'ler
 └── modules/
     ├── auth/        Kayıt, giriş, token, oturumlar; stil ve dosya düzeni için örnek
-    ├── user/        Profil, hesap silme, anonimleştirme; başka modüle bağımlı örnek
+    ├── user/        Profil, avatar, hesap silme, anonimleştirme; başka modüle bağımlı örnek
+    ├── file/        Dosya kaydı, yükleme ve doğrulama, bağlama kontrolü, temizlik
     ├── audit-log/   Denetim kaydı okuma, admin endpoint'i, saklama süresi
     └── health/      Liveness ve readiness
 ```
@@ -125,29 +130,36 @@ Katman, adlandırma ve yazım kurallarının tamamı `CLAUDE.md`'de.
 10. Doğrulama linki ya da kodu gerekiyorsa (e-posta doğrulama, e-posta
     değişikliği, işlem onayı) token'ı `OneTimeTokenService` ile üret ve tüket;
     türü modülün sabitlerinde `<modül>.<olay>` olarak tanımla.
+11. Dosya gerekiyorsa türünü `defineFilePurpose` ile sabitlerde tanımla,
+    `FileModule.forFeature([...])` ile kaydet ve kayda `onDelete: Restrict`
+    taşıyan, index'li bir FK kolonuyla bağla (bkz. [Dosya yükleme](#dosya-yükleme)).
 
 ## API
 
 Bütün yollar `/api` ile başlar; iş endpoint'leri `v1` altındadır.
 
-| Method   | Yol                             | Erişim | Açıklama                                     |
-| -------- | ------------------------------- | ------ | -------------------------------------------- |
-| `POST`   | `/api/v1/auth/register`         | açık   | Kayıt; token çifti döner                     |
-| `POST`   | `/api/v1/auth/login`            | açık   | Giriş; token çifti ve `reactivated`          |
-| `POST`   | `/api/v1/auth/refresh`          | açık   | Refresh token ile yeni token çifti           |
-| `POST`   | `/api/v1/auth/logout`           | açık   | Refresh token'ın oturumunu kapatır           |
-| `POST`   | `/api/v1/auth/password/change`  | bearer | Şifreyi değiştirir; diğer oturumları kapatır |
-| `POST`   | `/api/v1/auth/password/forgot`  | açık   | Şifre sıfırlama maili gönderir               |
-| `POST`   | `/api/v1/auth/password/reset`   | açık   | Maildeki token ile yeni şifre belirler       |
-| `GET`    | `/api/v1/auth/sessions`         | bearer | Aktif oturumlar; mevcut olan işaretli        |
-| `DELETE` | `/api/v1/auth/sessions/:id`     | bearer | Tek oturumu kapatır                          |
-| `DELETE` | `/api/v1/auth/sessions`         | bearer | Bütün oturumları kapatır                     |
-| `GET`    | `/api/v1/users/me`              | bearer | Profil                                       |
-| `GET`    | `/api/v1/users/me/security-log` | bearer | Hesaba dair olaylar (cursor sayfalı)         |
-| `DELETE` | `/api/v1/users/me`              | bearer | Hesabı siler (geri alınabilir)               |
-| `GET`    | `/api/v1/admin/audit-logs`      | admin  | Denetim kayıtları (filtreli, sayfalı)        |
-| `GET`    | `/api/health/live`              | açık   | Süreç ayakta mı                              |
-| `GET`    | `/api/health/ready`             | açık   | Veritabanı erişilebilir mi; değilse 503      |
+| Method   | Yol                             | Erişim | Açıklama                                       |
+| -------- | ------------------------------- | ------ | ---------------------------------------------- |
+| `POST`   | `/api/v1/auth/register`         | açık   | Kayıt; token çifti döner                       |
+| `POST`   | `/api/v1/auth/login`            | açık   | Giriş; token çifti ve `reactivated`            |
+| `POST`   | `/api/v1/auth/refresh`          | açık   | Refresh token ile yeni token çifti             |
+| `POST`   | `/api/v1/auth/logout`           | açık   | Refresh token'ın oturumunu kapatır             |
+| `POST`   | `/api/v1/auth/password/change`  | bearer | Şifreyi değiştirir; diğer oturumları kapatır   |
+| `POST`   | `/api/v1/auth/password/forgot`  | açık   | Şifre sıfırlama maili gönderir                 |
+| `POST`   | `/api/v1/auth/password/reset`   | açık   | Maildeki token ile yeni şifre belirler         |
+| `GET`    | `/api/v1/auth/sessions`         | bearer | Aktif oturumlar; mevcut olan işaretli          |
+| `DELETE` | `/api/v1/auth/sessions/:id`     | bearer | Tek oturumu kapatır                            |
+| `DELETE` | `/api/v1/auth/sessions`         | bearer | Bütün oturumları kapatır                       |
+| `GET`    | `/api/v1/users/me`              | bearer | Profil (avatar dahil)                          |
+| `PUT`    | `/api/v1/users/me/avatar`       | bearer | Tamamlanmış bir dosyayı avatar yapar           |
+| `DELETE` | `/api/v1/users/me/avatar`       | bearer | Avatarı kaldırır                               |
+| `GET`    | `/api/v1/users/me/security-log` | bearer | Hesaba dair olaylar (cursor sayfalı)           |
+| `DELETE` | `/api/v1/users/me`              | bearer | Hesabı siler (geri alınabilir)                 |
+| `POST`   | `/api/v1/files/uploads`         | bearer | Yükleme izni ve tek kullanımlık yükleme URL'si |
+| `POST`   | `/api/v1/files/:id/complete`    | bearer | Yüklenen dosyayı doğrular ve işler             |
+| `GET`    | `/api/v1/admin/audit-logs`      | admin  | Denetim kayıtları (filtreli, sayfalı)          |
+| `GET`    | `/api/health/live`              | açık   | Süreç ayakta mı                                |
+| `GET`    | `/api/health/ready`             | açık   | Veritabanı erişilebilir mi; değilse 503        |
 
 İstemci isteğe bağlı olarak `x-device-name` (oturum listesinde görünen cihaz
 adı) ve `x-request-id` (log korelasyonu; `[A-Za-z0-9._-]`, en fazla 128
@@ -180,17 +192,18 @@ geliştirici içindir ve kullanıcıya gösterilmez.
 }
 ```
 
-| Statü | Ne zaman                                                        |
-| ----- | --------------------------------------------------------------- |
-| `400` | Bozuk JSON gövdesi                                              |
-| `401` | Token yok, geçersiz ya da süresi dolmuş; hatalı giriş bilgisi   |
-| `403` | Rol yetersiz                                                    |
-| `404` | Kayıt ya da yol bulunamadı                                      |
-| `409` | Çakışma (ör. `EMAIL_TAKEN`)                                     |
-| `413` | Gövde 100 KB sınırını aşıyor                                    |
-| `422` | Şema doğrulaması başarısız; `errors[]` alan bazlı ayrıntı taşır |
-| `429` | Rate limit ya da hesap kilidi; `Retry-After` başlığı taşır      |
-| `500` | Beklenmeyen hata; ayrıntı yalnızca logda                        |
+| Statü | Ne zaman                                                                   |
+| ----- | -------------------------------------------------------------------------- |
+| `400` | Bozuk JSON gövdesi                                                         |
+| `401` | Token yok, geçersiz ya da süresi dolmuş; hatalı giriş bilgisi              |
+| `403` | Rol yetersiz                                                               |
+| `404` | Kayıt ya da yol bulunamadı                                                 |
+| `409` | Çakışma (ör. `EMAIL_TAKEN`)                                                |
+| `413` | Gövde 100 KB sınırını aşıyor                                               |
+| `422` | Şema doğrulaması başarısız; `errors[]` alan bazlı ayrıntı taşır            |
+| `429` | Rate limit ya da hesap kilidi; `Retry-After` başlığı taşır                 |
+| `500` | Beklenmeyen hata; ayrıntı yalnızca logda                                   |
+| `503` | Dosya depolamaya ulaşılamıyor ya da görsel işleme dolu; tekrar denenebilir |
 
 `429` iki farklı `code` ile gelir: rate limit için `TOO_MANY_REQUESTS`, hesap
 kilidi için `ACCOUNT_TEMPORARILY_LOCKED`. İstemci ikisini de tanımalı.
@@ -268,6 +281,7 @@ giriş yaparsa hesap geri açılır ve login cevabı `reactivated: true` taşır
 
 Süre dolunca günlük iş hesabı anonimleştirir: e-posta ve şifre hash'i
 değiştirilir; oturumlardaki ve denetim kayıtlarındaki IP ile istemci bilgisi
+silinir; avatar bağlantısı kaldırılır ve yüklenen dosyaların orijinal adları
 silinir. Denetim satırlarındaki `actorId` korunur; artık kimseyi tanımlamayan
 bir kullanıcıya işaret ettiği için iz kopmaz. Anonimleştirme ile geri açılma
 aynı anda denk gelirse ikisi birbirini ezmez; önce yazılan kazanır.
@@ -358,6 +372,75 @@ gönderir. Gönderim başarısız olursa iş, bekleme süresi artarak tekrar den
 Şifre sıfırlamada token da worker'da üretilir, böylece açık link kuyruğa hiç
 yazılmaz.
 
+## Dosya yükleme
+
+Dosyalar S3 uyumlu bir depolamada (varsayılan olarak Cloudflare R2) iki
+bucket'ta durur: public olanlar ayrı bir alan adından kalıcı URL ile, private
+olanlar yalnızca kısa ömürlü imzalı linkle okunur. Dosya API'den geçmez:
+
+1. `POST /files/uploads` türü, rolü, içerik türünü ve boyutu denetler; 10
+   dakikalık, tek yazmalık bir `uploadUrl` ve gönderilecek `headers`'ı döner.
+2. İstemci dosyayı bu URL'ye doğrudan `PUT` eder.
+3. `POST /files/:id/complete` dosyayı aynı istekte doğrular: tür, istemcinin
+   beyanına değil dosyanın ilk baytlarına bakılarak tespit edilir; görseller
+   metadata'sı silinerek WebP'ye çevrilir ve varyantları üretilir. Cevap,
+   URL'leri taşıyan `StoredFile`'dır.
+4. Modül dosyayı kendi endpoint'iyle bir kayda bağlar
+   (`PUT /users/me/avatar { fileId }`).
+
+`complete` `422 FILE_INVALID_CONTENT` ya da `FILE_TOO_LARGE` dönerse kayıt
+silinir, kullanıcı başka dosya seçer; `503` dönerse kayıt kalır ve aynı istek
+yeniden yükleme yapmadan tekrarlanır.
+
+**Tür tanımlamak.** Tür modülün sabitlerinde durur ve
+`FileModule.forFeature([...])` ile kaydedilir:
+
+```ts
+export const USER_FILE_PURPOSE = {
+  USER_AVATAR: defineFilePurpose({
+    name: 'user.avatar',
+    visibility: StoredFileVisibility.PUBLIC,
+    ownership: 'personal',
+    contentTypes: ['image/jpeg', 'image/png', 'image/webp'],
+    maxBytes: 5 * 1024 * 1024,
+    image: {
+      fit: 'cover',
+      variants: { medium: [256, 256], large: [512, 512] },
+    },
+  }),
+} as const;
+```
+
+`PRIVATE` bir dosya yalnızca `FileService.createDownloadUrl`'in verdiği 5
+dakikalık linkle okunur; kimin okuyabileceğine modül karar verir. `personal`
+bir dosyayı yalnızca yükleyen, `shared` bir dosyayı türe yükleme izni
+(`roles`) olan herkes bağlayabilir. İzin verilen türler açılışta denetlenir:
+görsellerde jpeg, png ve webp; diğerlerinde ilk baytlarından tespit
+edilebilen türler.
+
+**Bağlamak ve temizlik.** Modül dosyaya `onDelete: Restrict` taşıyan, index'li
+bir FK kolonuyla bağlanır; bağlamayı `FileService.assertAttachable(..., tx)`
+ile aynı transaction'da yapar, kişisel dosyanın FK'sını `anonymize()`'da
+`null` yapar.
+
+```prisma
+avatarFileId String?
+avatarFile   StoredFile? @relation("UserAvatar", fields: [avatarFileId], references: [id], onDelete: Restrict)
+
+@@index([avatarFileId])
+```
+
+Modüller dosya silmez, yalnızca bağlantıyı kaldırır. Günlük `file.sweep` işi
+tamamlanmamış yüklemeleri ve 24 saattir hiçbir kaydın göstermediği dosyaları
+siler; dosyayı gösteren kolonları PostgreSQL katalogundan kendisi bulur.
+`Restrict`, süpürme ile bağlama aynı anda denk gelirse silmeyi veritabanında
+engeller. Prisma'da varsayılan `SetNull` olduğu için açıkça yazılmalı; aksi
+halde süpürücü çalışmayı reddeder.
+
+Silinen public bir dosya, Cloudflare önbelleğinden düşene kadar eski
+URL'sinden erişilebilir kalabilir; URL tahmin edilemez. Daha sıkı silme
+gereken proje `file.object-delete` işine önbellek temizleme ekler.
+
 ## Loglama ve istek bağlamı
 
 pino yapılandırılmış JSON log üretir (geliştirmede okunaklı tek satır). Her
@@ -383,29 +466,35 @@ Bütün değişkenler `src/config/env.schema.ts`'te Zod ile doğrulanır. Eksik 
 da geçersiz bir değer varsa uygulama **açılmaz** ve sorunlu değişkenleri
 listeler.
 
-| Değişken                         | Varsayılan    | Açıklama                                                            |
-| -------------------------------- | ------------- | ------------------------------------------------------------------- |
-| `DATABASE_URL`                   | **zorunlu**   | PostgreSQL bağlantı adresi                                          |
-| `JWT_ACCESS_SECRET`              | **zorunlu**   | En az 32 karakter; `openssl rand -base64 48`                        |
-| `NODE_ENV`                       | `development` | `development` · `test` · `production`; production'da Swagger kapalı |
-| `PORT`                           | `3000`        |                                                                     |
-| `DATABASE_POOL_MAX`              | `10`          | Instance başına azami veritabanı bağlantısı                         |
-| `JWT_ACCESS_TTL`                 | `15m`         | Access token ömrü; birim zorunlu: `s`, `m`, `h`, `d`                |
-| `REFRESH_TTL_DAYS`               | `7`           | Oturum ömrü (gün)                                                   |
-| `TRUST_PROXY`                    | `0`           | Güvenilir proxy'ler: hop sayısı ya da IP/CIDR listesi               |
-| `CORS_ORIGINS`                   | boş           | Virgülle ayrılmış origin listesi; boşsa CORS kapalı                 |
-| `LOG_LEVEL`                      | `info`        | `error` · `warn` · `info` · `debug`                                 |
-| `THROTTLE_ENABLED`               | `true`        | Rate limit açık mı                                                  |
-| `THROTTLE_TTL`                   | `60`          | Rate limit penceresi (saniye)                                       |
-| `THROTTLE_LIMIT`                 | `100`         | Pencere başına, endpoint başına istek                               |
-| `QUEUE_WORKERS_ENABLED`          | `true`        | Bu kopya kuyruktaki işleri ve zamanlamaları çalıştırsın mı          |
-| `SESSION_CLEANUP_RETENTION_DAYS` | `7`           | Süresi dolmuş / kapatılmış oturumların saklanma süresi (gün)        |
-| `USER_ANONYMIZATION_AFTER_DAYS`  | `14`          | Silinen hesabın geri alınabileceği süre (gün)                       |
-| `AUDIT_RETENTION_DAYS`           | `730`         | Denetim kayıtlarının saklanma süresi (gün)                          |
-| `APP_URL`                        | **zorunlu**   | Maildeki linklerin gittiği web uygulamasının kök adresi             |
-| `MAIL_DRIVER`                    | `console`     | `console` · `resend`; production'da `console` kabul edilmez         |
-| `MAIL_FROM`                      | **zorunlu**   | Gönderen, ör. `Uygulama <no-reply@alanadi.com>`                     |
-| `RESEND_API_KEY`                 | —             | `MAIL_DRIVER=resend` ise zorunlu                                    |
+| Değişken                         | Varsayılan    | Açıklama                                                             |
+| -------------------------------- | ------------- | -------------------------------------------------------------------- |
+| `DATABASE_URL`                   | **zorunlu**   | PostgreSQL bağlantı adresi                                           |
+| `JWT_ACCESS_SECRET`              | **zorunlu**   | En az 32 karakter; `openssl rand -base64 48`                         |
+| `NODE_ENV`                       | `development` | `development` · `test` · `production`; production'da Swagger kapalı  |
+| `PORT`                           | `3000`        |                                                                      |
+| `DATABASE_POOL_MAX`              | `10`          | Instance başına azami veritabanı bağlantısı                          |
+| `JWT_ACCESS_TTL`                 | `15m`         | Access token ömrü; birim zorunlu: `s`, `m`, `h`, `d`                 |
+| `REFRESH_TTL_DAYS`               | `7`           | Oturum ömrü (gün)                                                    |
+| `TRUST_PROXY`                    | `0`           | Güvenilir proxy'ler: hop sayısı ya da IP/CIDR listesi                |
+| `CORS_ORIGINS`                   | boş           | Virgülle ayrılmış origin listesi; boşsa CORS kapalı                  |
+| `LOG_LEVEL`                      | `info`        | `error` · `warn` · `info` · `debug`                                  |
+| `THROTTLE_ENABLED`               | `true`        | Rate limit açık mı                                                   |
+| `THROTTLE_TTL`                   | `60`          | Rate limit penceresi (saniye)                                        |
+| `THROTTLE_LIMIT`                 | `100`         | Pencere başına, endpoint başına istek                                |
+| `QUEUE_WORKERS_ENABLED`          | `true`        | Bu kopya kuyruktaki işleri ve zamanlamaları çalıştırsın mı           |
+| `SESSION_CLEANUP_RETENTION_DAYS` | `7`           | Süresi dolmuş / kapatılmış oturumların saklanma süresi (gün)         |
+| `USER_ANONYMIZATION_AFTER_DAYS`  | `14`          | Silinen hesabın geri alınabileceği süre (gün)                        |
+| `AUDIT_RETENTION_DAYS`           | `730`         | Denetim kayıtlarının saklanma süresi (gün)                           |
+| `APP_URL`                        | **zorunlu**   | Maildeki linklerin gittiği web uygulamasının kök adresi              |
+| `MAIL_DRIVER`                    | `console`     | `console` · `resend`; production'da `console` kabul edilmez          |
+| `MAIL_FROM`                      | **zorunlu**   | Gönderen, ör. `Uygulama <no-reply@alanadi.com>`                      |
+| `RESEND_API_KEY`                 | —             | `MAIL_DRIVER=resend` ise zorunlu                                     |
+| `STORAGE_ENDPOINT`               | **zorunlu**   | S3 endpoint'i; R2'de `https://<account_id>.r2.cloudflarestorage.com` |
+| `STORAGE_ACCESS_KEY_ID`          | **zorunlu**   | Yalnızca iki bucket'a okuma ve yazma yetkili token                   |
+| `STORAGE_SECRET_ACCESS_KEY`      | **zorunlu**   |                                                                      |
+| `STORAGE_PUBLIC_BUCKET`          | **zorunlu**   | CDN'den sunulan dosyalar                                             |
+| `STORAGE_PRIVATE_BUCKET`         | **zorunlu**   | Private dosyalar ve yarım kalan yüklemeler (`incoming/`)             |
+| `STORAGE_PUBLIC_URL`             | **zorunlu**   | Public bucket'ın bağlı olduğu, uygulamadan ayrı alan adı             |
 
 ## Arka plan işleri
 
@@ -451,6 +540,7 @@ ve birden fazla kopyada her tetiklenme tek bir iş üretir. Saatler
 
 | İş                     | Saat  | Ne yapar                                                               |
 | ---------------------- | ----- | ---------------------------------------------------------------------- |
+| `file.sweep`           | 02:00 | Tamamlanmamış ve hiçbir kaydın göstermediği dosyaları siler            |
 | `auth.session-cleanup` | 03:00 | Saklama süresi geçmiş, süresi dolmuş ya da kapatılmış oturumları siler |
 | `audit-log.cleanup`    | 04:00 | Saklama süresi dolan denetim kayıtlarını siler                         |
 | `user.anonymization`   | 05:00 | Geri alma süresi dolan silinmiş hesapları anonimleştirir               |
@@ -488,6 +578,19 @@ ve birden fazla kopyada her tetiklenme tek bir iş üretir. Saatler
 - **Sağlık kontrolü:** Liveness için `/api/health/live`, readiness için
   `/api/health/ready` kullan; ikincisi veritabanına ulaşamazsa `503` döner.
 - **Migration:** Yayında `pnpm exec prisma migrate deploy` çalıştır.
+- **Dosya depolama (R2):** Her ortam için iki bucket ve yalnızca bunlara
+  `Object Read & Write` yetkili bir Account API token'ı. Bucket'ın konumu
+  sonradan değiştirilemez.
+  - Public bucket'a uygulamadan ayrı bir alan adı bağla (`r2.dev` hız
+    sınırlıdır, yalnızca geliştirme için). Bu alan adına Cloudflare kuralıyla
+    `X-Content-Type-Options: nosniff` ve
+    `Content-Security-Policy: default-src 'none'; sandbox` ekle.
+  - Private bucket'ın CORS'u web origin'lerine `PUT` ile `content-type` ve
+    `if-none-match` başlıklarını açar; `incoming/` önekine "1 gün sonra sil"
+    lifecycle kuralı konur.
+  - Görsel işleme kopya başına aynı anda 2 dosyayla sınırlıdır. sharp ve
+    argon2 aynı iş parçacığı havuzunu paylaştığı için yoğun bir kopyada
+    `UV_THREADPOOL_SIZE` artırılabilir.
 
 ## Komutlar
 
@@ -510,7 +613,9 @@ Bunlar bilerek eklenmedi; ihtiyaç duyan proje kendisi ekler:
   yalnızca akış projeye göre eklenir)
 - MFA ve CAPTCHA (dış servis ister)
 - Profil güncelleme, kullanıcı listeleme, admin atama gibi CRUD endpoint'leri
-- Cache, dosya yükleme, i18n, Docker, Redis
+- Cache, i18n, Docker, Redis
+- Dosyalarda virüs taraması, video, HEIC/AVIF, kota ve kesintiden sonra devam
+  ettirilebilen büyük yüklemeler
 
 ## Bilinen tuzaklar
 
