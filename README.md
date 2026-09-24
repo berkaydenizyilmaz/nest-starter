@@ -1,12 +1,14 @@
 # NestJS Starter
 
 Yeni bir backend projesine iş mantığından başlayabilmen için hazırlanmış bir
-iskelet. Kimlik doğrulama, oturum yönetimi, denetim kaydı, hata yönetimi,
-doğrulama, loglama ve kötüye kullanım koruması kurulu ve birbirine bağlı gelir;
-sen yalnızca kendi modüllerini eklersin.
+iskelet. Kimlik doğrulama, oturum yönetimi, şifre sıfırlama, denetim kaydı,
+mail, arka plan işleri, hata yönetimi, doğrulama, loglama ve kötüye kullanım
+koruması kurulu ve birbirine bağlı gelir; sen yalnızca kendi modüllerini
+eklersin.
 
-**Nest 12** (Express 5, ESM) · **Prisma 7** + PostgreSQL · **Zod 4** · **pino** ·
-**nestjs-cls** · **argon2** · **Vitest** · **oxlint**
+**Nest 12** (Express 5, ESM) · **Prisma 7** + PostgreSQL · **pg-boss** ·
+**Zod 4** · **pino** · **nestjs-cls** · **argon2** · **Resend** · **Vitest** ·
+**oxlint**
 
 ## İçindekiler
 
@@ -274,8 +276,9 @@ kolonu eklersen o modülün `anonymize()` metoduna bir satır eklemen gerekir.
 ## Denetim kaydı
 
 Güvenlikle ilgili olaylar kalıcı olarak `AuditLog` tablosuna yazılır: kayıt,
-giriş (başarılı ve başarısız), çıkış, hesap kilidi, oturum iptali, token
-tekrar kullanımı, yetki reddi, hesap silme, geri açma ve anonimleştirme. Olay
+giriş (başarılı ve başarısız), çıkış, hesap kilidi, şifre değiştirme, şifre
+sıfırlama isteği ve sıfırlama, oturum iptali, token tekrar kullanımı, yetki
+reddi, hesap silme, geri açma ve anonimleştirme. Olay
 adları OWASP Logging Vocabulary'ye dayanır (`authn_login`, `user_deleted`);
 sonuç ayrı bir `outcome` alanındadır (`SUCCESS` / `FAILURE`).
 
@@ -315,8 +318,9 @@ doğru sayılır; kilit oluştuktan sonra doğru şifre de reddedilir.
 **Bilerek bırakılan sınırlar:**
 
 - Israrlı bir saldırgan bir hesabın girişini tavan süre boyunca kapalı
-  tutabilir; hesabı anahtar alan her kilit tasarımında durum aynıdır. OWASP'ın
-  önerdiği çıkış yolu olan şifre sıfırlama bu starter'da yok.
+  tutabilir; hesabı anahtar alan her kilit tasarımında durum aynıdır.
+  Kullanıcının çıkış yolu OWASP'ın önerdiği gibi şifre sıfırlamadır: başarılı
+  sıfırlama kilidi ve başarısız giriş sayacını sıfırlar.
 - Hesap numaralandırması engellenmez: kilitli hesap `429`, olmayan hesap `401`
   döner; `register` de `409 EMAIL_TAKEN` ile aynı bilgiyi verir. Giriş
   denemesinin cevap süresi ise e-postanın kayıtlı olup olmadığını ele vermez.
@@ -416,7 +420,7 @@ Her iş kendi modülünde iki dosyadır:
 export const passwordResetMailJob = defineJob({
   name: AUTH_JOB.AUTH_PASSWORD_RESET_MAIL,
   payload: z.object({ userId: z.uuid() }).strict(),
-  options: { retryLimit: 5, retryDelay: 30, retryBackoff: true },
+  options: { retryLimit: 3, retryDelay: 3, retryBackoff: true },
 });
 
 // modules/auth/jobs/password-reset-mail.handler.ts
@@ -501,7 +505,8 @@ ve birden fazla kopyada her tetiklenme tek bir iş üretir. Saatler
 
 Bunlar bilerek eklenmedi; ihtiyaç duyan proje kendisi ekler:
 
-- E-posta doğrulama (mail altyapısı hazır; token ve akış projeye göre eklenir)
+- E-posta doğrulama (mail, kuyruk ve tek kullanımlık token altyapısı hazır;
+  yalnızca akış projeye göre eklenir)
 - MFA ve CAPTCHA (dış servis ister)
 - Profil güncelleme, kullanıcı listeleme, admin atama gibi CRUD endpoint'leri
 - Cache, dosya yükleme, i18n, Docker, Redis
