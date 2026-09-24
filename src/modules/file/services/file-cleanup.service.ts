@@ -1,4 +1,8 @@
-import { Inject, Injectable } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  type OnApplicationBootstrap,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PinoLogger } from 'nestjs-pino';
 import type { Env } from '../../../config/env.schema.js';
@@ -47,7 +51,7 @@ const FILE_REFERENCES_SQL = `
     AND cardinality(con.conkey) = 1`;
 
 @Injectable()
-export class FileCleanupService {
+export class FileCleanupService implements OnApplicationBootstrap {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService<Env, true>,
@@ -56,6 +60,10 @@ export class FileCleanupService {
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(FileCleanupService.name);
+  }
+
+  async onApplicationBootstrap(): Promise<void> {
+    await this.fileReferences();
   }
 
   async removeUnused(): Promise<{ removed: number; skipped: number }> {
@@ -140,6 +148,15 @@ export class FileCleanupService {
   }
 
   private async removableCondition(): Promise<string> {
+    const references = await this.fileReferences();
+    const unreferenced =
+      references.map(({ clause }) => clause).join(' AND ') || 'TRUE';
+
+    return `(f.status = '${StoredFileStatus.PENDING}' AND f."createdAt" < $1::timestamp(3))
+      OR (f.status = '${StoredFileStatus.READY}' AND f."readyAt" < $2::timestamp(3) AND ${unreferenced})`;
+  }
+
+  private async fileReferences(): Promise<FileReference[]> {
     const references =
       await this.prisma.$queryRawUnsafe<FileReference[]>(FILE_REFERENCES_SQL);
 
@@ -154,10 +171,6 @@ export class FileCleanupService {
       );
     }
 
-    const unreferenced =
-      references.map(({ clause }) => clause).join(' AND ') || 'TRUE';
-
-    return `(f.status = '${StoredFileStatus.PENDING}' AND f."createdAt" < $1::timestamp(3))
-      OR (f.status = '${StoredFileStatus.READY}' AND f."readyAt" < $2::timestamp(3) AND ${unreferenced})`;
+    return references;
   }
 }
