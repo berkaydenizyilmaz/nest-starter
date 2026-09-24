@@ -11,6 +11,7 @@ import { AuditModule } from './core/audit/audit.module.js';
 import { MailModule } from './core/mail/mail.module.js';
 import { OneTimeTokenModule } from './core/one-time-token/one-time-token.module.js';
 import { QueueModule } from './core/queue/queue.module.js';
+import { StorageModule } from './core/storage/storage.module.js';
 import { AuditLogModule } from './modules/audit-log/audit-log.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { type Env, envSchema } from './config/env.schema.js';
@@ -56,6 +57,7 @@ import { MS_PER_SECOND } from './common/constants/time.constants.js';
     MailModule,
     OneTimeTokenModule,
     QueueModule,
+    StorageModule,
     AuditLogModule,
     AuthModule,
     UserModule,

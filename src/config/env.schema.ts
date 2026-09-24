@@ -64,6 +64,13 @@ export const envSchema = z
     MAIL_DRIVER: z.enum(['console', 'resend']).default('console'),
     MAIL_FROM: z.string().min(1),
     RESEND_API_KEY: z.string().min(1).optional(),
+
+    STORAGE_ENDPOINT: z.url(),
+    STORAGE_ACCESS_KEY_ID: z.string().min(1),
+    STORAGE_SECRET_ACCESS_KEY: z.string().min(1),
+    STORAGE_PUBLIC_BUCKET: z.string().min(1),
+    STORAGE_PRIVATE_BUCKET: z.string().min(1),
+    STORAGE_PUBLIC_URL: z.url(),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && env.MAIL_DRIVER === 'console') {
