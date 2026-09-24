@@ -380,7 +380,9 @@ olanlar yalnızca kısa ömürlü imzalı linkle okunur. Dosya API'den geçmez:
 
 1. `POST /files/uploads` türü, rolü, içerik türünü ve boyutu denetler; 10
    dakikalık, tek yazmalık bir `uploadUrl` ve gönderilecek `headers`'ı döner.
-2. İstemci dosyayı bu URL'ye doğrudan `PUT` eder.
+2. İstemci dosyayı bu URL'ye doğrudan `PUT` eder. Link tek yazmalık olduğu için
+   tekrarlanan bir `PUT` `412` alır; bu dosyanın zaten yüklendiğini söyler,
+   istemci doğrudan `complete`'i çağırır.
 3. `POST /files/:id/complete` dosyayı aynı istekte doğrular: tür, istemcinin
    beyanına değil dosyanın ilk baytlarına bakılarak tespit edilir; görseller
    metadata'sı silinerek WebP'ye çevrilir ve varyantları üretilir. Cevap,
@@ -411,8 +413,8 @@ export const USER_FILE_PURPOSE = {
 } as const;
 ```
 
-`PRIVATE` bir dosya yalnızca `FileService.createDownloadUrl`'in verdiği 5
-dakikalık linkle okunur; kimin okuyabileceğine modül karar verir. `personal`
+`PRIVATE` bir dosya ve varyantları yalnızca `FileService.createDownloadUrl`'in
+verdiği 5 dakikalık linkle okunur; kimin okuyabileceğine modül karar verir. `personal`
 bir dosyayı yalnızca yükleyen, `shared` bir dosyayı türe yükleme izni
 (`roles`) olan herkes bağlayabilir. İzin verilen türler açılışta denetlenir:
 görsellerde jpeg, png ve webp; diğerlerinde ilk baytlarından tespit
@@ -440,11 +442,18 @@ tamamlanmamış yüklemeleri ve 24 saattir hiçbir kaydın göstermediği dosyal
 siler; dosyayı gösteren kolonları PostgreSQL katalogundan kendisi bulur.
 `Restrict`, süpürme ile bağlama aynı anda denk gelirse silmeyi veritabanında
 engeller. Prisma'da varsayılan `SetNull` olduğu için açıkça yazılmalı; aksi
-halde süpürücü çalışmayı reddeder.
+halde uygulama açılmaz.
 
 Silinen public bir dosya, Cloudflare önbelleğinden düşene kadar eski
-URL'sinden erişilebilir kalabilir; URL tahmin edilemez. Daha sıkı silme
-gereken proje `file.object-delete` işine önbellek temizleme ekler.
+URL'sinden erişilebilir kalabilir; URL tahmin edilemez.
+
+**Genişletme yolları.** Kota gibi bir yükleme politikası gereken proje, türü
+genel `/files/uploads` endpoint'ine kapatan bir seçenek ve modülün kendi
+yükleme endpoint'ini ekler; modül politikayı uygulayıp
+`FileService.createUpload`'ı çağırır. Moderasyon gibi dosyanın hemen
+kaldırılması gereken durumlar için `FileService`'e bağlantıyı boşaltıp satırı
+anında silen bir metot ve `file.object-delete` işine Cloudflare önbellek
+temizleme eklenir.
 
 ## Loglama ve istek bağlamı
 
