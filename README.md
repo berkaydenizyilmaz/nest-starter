@@ -65,6 +65,7 @@ src/
 │   ├── audit/           AuditService: denetim kaydı yazıcısı
 │   ├── mail/            MailService ve sürücüleri (console, resend)
 │   ├── queue/           pg-boss kuyruğu: QueueService, iş keşfi, zamanlamalar
+│   ├── one-time-token/  OneTimeTokenService: maille giden tek kullanımlık token'lar
 │   ├── logger.module.ts
 │   └── request-context.module.ts
 ├── common/          Modüllerin ortak dili: hata sınıfları, decorator'lar,
@@ -119,6 +120,9 @@ Katman, adlandırma ve yazım kurallarının tamamı `CLAUDE.md`'de.
 9. Arka plan ya da zamanlanmış iş gerekiyorsa `jobs/` altına bir tanım
    (`<olay>.job.ts`) ve bir handler (`<olay>.handler.ts`) ekle (bkz.
    [Arka plan işleri](#arka-plan-işleri)).
+10. Doğrulama linki ya da kodu gerekiyorsa (e-posta doğrulama, e-posta
+    değişikliği, işlem onayı) token'ı `OneTimeTokenService` ile üret ve tüket;
+    türü modülün sabitlerinde `<modül>.<olay>` olarak tanımla.
 
 ## API
 
@@ -231,6 +235,15 @@ ya da kullanılmış token `422 INVALID_RESET_TOKEN`, süresi dolmuş token
 `422 RESET_TOKEN_EXPIRED` döner. Web uygulamasının `/reset-password` sayfası
 token'ı query'den alıp bu endpoint'e göndermelidir; mobil aynı linki universal
 link olarak yakalar.
+
+**Tek kullanımlık token'lar.** Sıfırlama token'ı, maille ya da SMS'le giden
+bütün doğrulama token'ları için ortak olan `OneTimeToken` tablosunda durur ve
+yalnızca `core/one-time-token`'daki `OneTimeTokenService` ile yönetilir. Her
+token bir kullanıcıya ve bir türe (`auth.password-reset` gibi) bağlıdır;
+kullanıcı başına her türden tek token olur, yenisi eskisinin yerine geçer.
+Servis token'ı üretir, yalnızca hash'ini saklar, tek kullanımı ve süreyi
+denetler; tüketme sonucunu (`valid`, `invalid`, `expired`) çağıran modül kendi
+hata koduna çevirir.
 
 **İptalin sınırı.** Oturum kapatmak refresh'i hemen keser ama access token
 stateless doğrulandığı için ömrü dolana kadar (`JWT_ACCESS_TTL`, varsayılan 15

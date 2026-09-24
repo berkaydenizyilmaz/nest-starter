@@ -152,6 +152,14 @@ spec içinde benzersiz olmalı. Fiil + kaynak yaz (`listSessions`, `revokeSessio
 - Mail istek içinde gönderilmez; bir kuyruk işi gönderir. Alıcı adresini
   loglama.
 
+## Tek kullanımlık token
+
+- Doğrulama linki ya da kodu `core/one-time-token`'daki `OneTimeTokenService`
+  ile üretilir ve tüketilir; `OneTimeToken` tablosuna doğrudan erişme. Tür
+  modülün `<ad>.constants.ts`'inde `<modül>.<olay>` biçiminde sabittir.
+- `consume` durum değişikliğiyle aynı transaction'da çağrılır ve fırlatmaz;
+  sonucu modül kendi hata koduna çevirir.
+
 ## Kuyruk
 
 - İş, modülün `jobs/` klasöründe (her zaman ayrı) iki dosyadır: `<olay>.job.ts`
