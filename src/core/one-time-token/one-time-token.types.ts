@@ -5,7 +5,11 @@ export interface OneTimeTokenRef {
 
 export interface IssueOneTimeTokenInput extends OneTimeTokenRef {
   ttlMs: number;
+  cooldownMs: number;
 }
+
+export type IssueOneTimeTokenResult =
+  { status: 'issued'; token: string } | { status: 'cooling_down' };
 
 export interface ConsumeOneTimeTokenInput {
   token: string;

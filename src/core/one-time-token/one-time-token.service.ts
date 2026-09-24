@@ -6,6 +6,7 @@ import type {
   ConsumeOneTimeTokenInput,
   ConsumeOneTimeTokenResult,
   IssueOneTimeTokenInput,
+  IssueOneTimeTokenResult,
   OneTimeTokenRef,
 } from './one-time-token.types.js';
 
@@ -16,24 +17,35 @@ export class OneTimeTokenService {
   constructor(private readonly prisma: PrismaService) {}
 
   async issue(
-    { userId, purpose, ttlMs }: IssueOneTimeTokenInput,
+    { userId, purpose, ttlMs, cooldownMs }: IssueOneTimeTokenInput,
     client: Prisma.TransactionClient = this.prisma,
-  ): Promise<string> {
+  ): Promise<IssueOneTimeTokenResult> {
     const token = createOpaqueToken(ONE_TIME_TOKEN_BYTES);
+    const now = Date.now();
     const issued = {
       tokenHash: hashOpaqueToken(token),
-      expiresAt: new Date(Date.now() + ttlMs),
+      expiresAt: new Date(now + ttlMs),
       usedAt: null,
-      issuedAt: new Date(),
+      issuedAt: new Date(now),
     };
 
-    await client.oneTimeToken.upsert({
-      where: { userId_purpose: { userId, purpose } },
-      create: { userId, purpose, ...issued },
-      update: issued,
+    const replaced = await client.oneTimeToken.updateMany({
+      where: { userId, purpose, issuedAt: { lte: new Date(now - cooldownMs) } },
+      data: issued,
     });
 
-    return token;
+    if (replaced.count > 0) {
+      return { status: 'issued', token };
+    }
+
+    const created = await client.oneTimeToken.createMany({
+      data: { userId, purpose, ...issued },
+      skipDuplicates: true,
+    });
+
+    return created.count > 0
+      ? { status: 'issued', token }
+      : { status: 'cooling_down' };
   }
 
   async consume(

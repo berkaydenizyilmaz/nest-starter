@@ -150,22 +150,19 @@ export class PasswordService {
 
     const ref = { userId, purpose: AUTH_TOKEN_PURPOSE.AUTH_PASSWORD_RESET };
 
-    if (
-      await this.oneTimeTokens.issuedWithin(ref, PASSWORD_RESET_COOLDOWN_MS)
-    ) {
-      return;
-    }
-
-    const token = await this.oneTimeTokens.issue({
+    const issued = await this.oneTimeTokens.issue({
       ...ref,
       ttlMs: PASSWORD_RESET_TTL_MS,
+      cooldownMs: PASSWORD_RESET_COOLDOWN_MS,
     });
+
+    if (issued.status === 'cooling_down') return;
 
     const resetUrl = new URL(
       PASSWORD_RESET_PATH,
       this.config.get('APP_URL', { infer: true }),
     );
-    resetUrl.searchParams.set('token', token);
+    resetUrl.searchParams.set('token', issued.token);
 
     try {
       await this.mail.send({

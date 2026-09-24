@@ -245,7 +245,9 @@ token bir kullanıcıya ve bir türe (`auth.password-reset` gibi) bağlıdır;
 kullanıcı başına her türden tek token olur, yenisi eskisinin yerine geçer.
 Servis token'ı üretir, yalnızca hash'ini saklar, tek kullanımı ve süreyi
 denetler; tüketme sonucunu (`valid`, `invalid`, `expired`) çağıran modül kendi
-hata koduna çevirir.
+hata koduna çevirir. Yeniden gönderim için bekleme süresi de serviste tek bir
+koşullu yazmayla uygulanır: aynı anda gelen istekler arasından yalnızca biri
+token alır, diğerleri `cooling_down` döner.
 
 **İptalin sınırı.** Oturum kapatmak refresh'i hemen keser ama access token
 stateless doğrulandığı için ömrü dolana kadar (`JWT_ACCESS_TTL`, varsayılan 15
