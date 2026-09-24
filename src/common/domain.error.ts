@@ -7,6 +7,7 @@ export const ErrorKind = {
   NotFound: 'NOT_FOUND',
   Conflict: 'CONFLICT',
   TooManyRequests: 'TOO_MANY_REQUESTS',
+  Unavailable: 'UNAVAILABLE',
 } as const;
 
 export type ErrorKind = (typeof ErrorKind)[keyof typeof ErrorKind];
@@ -61,4 +62,8 @@ export class TooManyRequestsError extends DomainError {
   ) {
     super(code, message);
   }
+}
+
+export class UnavailableError extends DomainError {
+  readonly kind = ErrorKind.Unavailable;
 }

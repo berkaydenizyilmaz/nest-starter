@@ -25,6 +25,7 @@ const KIND_TO_STATUS: Record<ErrorKind, HttpStatus> = {
   NOT_FOUND: HttpStatus.NOT_FOUND,
   CONFLICT: HttpStatus.CONFLICT,
   TOO_MANY_REQUESTS: HttpStatus.TOO_MANY_REQUESTS,
+  UNAVAILABLE: HttpStatus.SERVICE_UNAVAILABLE,
 };
 
 const PRISMA_STATUS: Record<

@@ -104,8 +104,9 @@
 
 - Service `DomainError` fırlatır: `new NotFoundError('USER_NOT_FOUND', '...')`.
   İlk parametre makine okunur koddur, istemci ona bakar.
-- HTTP'ye çeviren tek yer `AllExceptionsFilter`. Yeni hata türü `DomainError`'dan
-  türer, filter'a dokunulmaz.
+- HTTP'ye çeviren tek yer `AllExceptionsFilter`. Yeni hata sınıfı mevcut
+  türlerden birinden türer; yeni bir HTTP statüsü gerekiyorsa `ErrorKind`'e ve
+  `KIND_TO_STATUS` tablosuna bir satır eklenir, filter'a mantık eklenmez.
 - Mesajlar İngilizce ve geliştiriciye bakar, kullanıcıya gösterilmez.
 - Doğrulama hataları **422**, 400 değil; cevap `errors: [{ field, code, message }]`
   taşır. Kullanıcının düzeltebileceği bir girdi hatası da `401` değil `422`'dir;
