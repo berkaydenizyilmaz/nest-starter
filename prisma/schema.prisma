@@ -28,8 +28,8 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  sessions            Session[]
-  passwordResetTokens PasswordResetToken[]
+  sessions      Session[]
+  oneTimeTokens OneTimeToken[]
 
   @@index([anonymizedAt, deletedAt])
 }
@@ -69,8 +69,9 @@ model RefreshToken {
   @@index([sessionId, usedAt])
 }
 
-model PasswordResetToken {
+model OneTimeToken {
   id        String @id @default(uuid())
+  purpose   String
   tokenHash String @unique
 
   userId String
@@ -78,9 +79,9 @@ model PasswordResetToken {
 
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime  @default(now())
+  issuedAt  DateTime  @default(now())
 
-  @@index([userId])
+  @@unique([userId, purpose])
 }
 
 enum AuditOutcome {

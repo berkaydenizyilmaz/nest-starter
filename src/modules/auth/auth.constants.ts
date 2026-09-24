@@ -6,7 +6,6 @@ export const ROTATION_GRACE_MS = 30 * 1000;
 
 export const MAX_ACTIVE_SESSIONS = 10;
 
-export const PASSWORD_RESET_TOKEN_BYTES = 32;
 export const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
 export const PASSWORD_RESET_COOLDOWN_MS = 60 * 1000;
 export const PASSWORD_RESET_PATH = '/reset-password';
@@ -31,6 +30,10 @@ export const AUTH_AUDIT = {
 
   USER_CREATED: 'user_created',
   USER_REACTIVATED: 'user_reactivated',
+} as const;
+
+export const AUTH_TOKEN_PURPOSE = {
+  AUTH_PASSWORD_RESET: 'auth.password-reset',
 } as const;
 
 export const AUTH_JOB = {

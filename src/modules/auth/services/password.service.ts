@@ -11,25 +11,22 @@ import {
 import type { Env } from '../../../config/env.schema.js';
 import { AuditService } from '../../../core/audit/audit.service.js';
 import { MailService } from '../../../core/mail/mail.service.js';
+import { OneTimeTokenService } from '../../../core/one-time-token/one-time-token.service.js';
 import { PrismaService } from '../../../core/prisma/prisma.service.js';
 import { QueueService } from '../../../core/queue/queue.service.js';
 import { AuditOutcome } from '../../../generated/prisma/client.js';
 import {
   AUTH_AUDIT,
   AUTH_ERROR,
+  AUTH_TOKEN_PURPOSE,
   PASSWORD_RESET_COOLDOWN_MS,
   PASSWORD_RESET_PATH,
-  PASSWORD_RESET_TOKEN_BYTES,
   PASSWORD_RESET_TTL_MS,
 } from '../auth.constants.js';
 import type { ChangePasswordRequest } from '../dto/request/change-password.request.js';
 import type { ResetPasswordRequest } from '../dto/request/reset-password.request.js';
 import { passwordResetMailJob } from '../jobs/password-reset-mail.job.js';
 import { passwordResetMail } from '../mails/password-reset.mail.js';
-import {
-  createOpaqueToken,
-  hashOpaqueToken,
-} from '../../../core/opaque-token.util.js';
 import { SessionService } from './session.service.js';
 
 @Injectable()
@@ -41,6 +38,7 @@ export class PasswordService {
     private readonly audit: AuditService,
     private readonly mail: MailService,
     private readonly queue: QueueService,
+    private readonly oneTimeTokens: OneTimeTokenService,
   ) {}
 
   async change(user: AuthUser, input: ChangePasswordRequest): Promise<void> {
@@ -115,7 +113,18 @@ export class PasswordService {
       select: { id: true },
     });
 
-    if (!user || (await this.hasRecentResetToken(user.id))) return;
+    if (!user) return;
+
+    const ref = {
+      userId: user.id,
+      purpose: AUTH_TOKEN_PURPOSE.AUTH_PASSWORD_RESET,
+    };
+
+    if (
+      await this.oneTimeTokens.issuedWithin(ref, PASSWORD_RESET_COOLDOWN_MS)
+    ) {
+      return;
+    }
 
     await this.prisma.$transaction(async (tx) => {
       await this.audit.record(
@@ -137,20 +146,19 @@ export class PasswordService {
       select: { email: true },
     });
 
-    if (!user || (await this.hasRecentResetToken(userId))) return;
+    if (!user) return;
 
-    const token = createOpaqueToken(PASSWORD_RESET_TOKEN_BYTES);
+    const ref = { userId, purpose: AUTH_TOKEN_PURPOSE.AUTH_PASSWORD_RESET };
 
-    const stored = await this.prisma.$transaction(async (tx) => {
-      await tx.passwordResetToken.deleteMany({ where: { userId } });
-      return tx.passwordResetToken.create({
-        data: {
-          userId,
-          tokenHash: hashOpaqueToken(token),
-          expiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_MS),
-        },
-        select: { id: true },
-      });
+    if (
+      await this.oneTimeTokens.issuedWithin(ref, PASSWORD_RESET_COOLDOWN_MS)
+    ) {
+      return;
+    }
+
+    const token = await this.oneTimeTokens.issue({
+      ...ref,
+      ttlMs: PASSWORD_RESET_TTL_MS,
     });
 
     const resetUrl = new URL(
@@ -168,51 +176,43 @@ export class PasswordService {
         }),
       });
     } catch (error) {
-      await this.prisma.passwordResetToken.deleteMany({
-        where: { id: stored.id },
-      });
+      await this.oneTimeTokens.remove(ref);
       throw error;
     }
   }
 
   async reset(input: ResetPasswordRequest): Promise<void> {
-    const stored = await this.prisma.passwordResetToken.findUnique({
-      where: { tokenHash: hashOpaqueToken(input.token) },
-      include: { user: { select: { anonymizedAt: true } } },
-    });
-
-    if (!stored || stored.usedAt || stored.user.anonymizedAt) {
-      throw invalidResetTokenError();
-    }
-
-    if (stored.expiresAt <= new Date()) {
-      throw new ValidationError(
-        AUTH_ERROR.RESET_TOKEN_EXPIRED,
-        'Reset token has expired',
-        [
-          {
-            field: 'token',
-            code: AUTH_ERROR.RESET_TOKEN_EXPIRED,
-            message: 'Reset token has expired',
-          },
-        ],
-      );
-    }
-
-    const passwordHash = await argon2.hash(input.newPassword);
-
     await this.prisma.$transaction(async (tx) => {
-      const claimed = await tx.passwordResetToken.updateMany({
-        where: { id: stored.id, usedAt: null },
-        data: { usedAt: new Date() },
-      });
+      const result = await this.oneTimeTokens.consume(
+        {
+          token: input.token,
+          purpose: AUTH_TOKEN_PURPOSE.AUTH_PASSWORD_RESET,
+        },
+        tx,
+      );
 
-      if (claimed.count === 0) {
+      if (result.status === 'expired') {
+        throw new ValidationError(
+          AUTH_ERROR.RESET_TOKEN_EXPIRED,
+          'Reset token has expired',
+          [
+            {
+              field: 'token',
+              code: AUTH_ERROR.RESET_TOKEN_EXPIRED,
+              message: 'Reset token has expired',
+            },
+          ],
+        );
+      }
+
+      if (result.status === 'invalid') {
         throw invalidResetTokenError();
       }
 
+      const passwordHash = await argon2.hash(input.newPassword);
+
       const changed = await tx.user.updateMany({
-        where: { id: stored.userId, anonymizedAt: null },
+        where: { id: result.userId, anonymizedAt: null },
         data: { passwordHash, failedLoginCount: 0, lockedUntil: null },
       });
 
@@ -220,35 +220,19 @@ export class PasswordService {
         throw invalidResetTokenError();
       }
 
-      await tx.passwordResetToken.deleteMany({
-        where: { userId: stored.userId, id: { not: stored.id } },
-      });
-      await this.sessions.revokeAll(stored.userId, tx);
+      await this.sessions.revokeAll(result.userId, tx);
 
       await this.audit.record(
         {
           event: AUTH_AUDIT.AUTHN_PASSWORD_RESET,
-          actorId: stored.userId,
-          subjectId: stored.userId,
+          actorId: result.userId,
+          subjectId: result.userId,
           targetType: AUDIT_TARGET.USER,
-          targetId: stored.userId,
+          targetId: result.userId,
         },
         tx,
       );
     });
-  }
-
-  private async hasRecentResetToken(userId: string): Promise<boolean> {
-    const latest = await this.prisma.passwordResetToken.findFirst({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      select: { createdAt: true },
-    });
-
-    return (
-      latest !== null &&
-      Date.now() - latest.createdAt.getTime() < PASSWORD_RESET_COOLDOWN_MS
-    );
   }
 }
 
