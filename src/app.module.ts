@@ -14,6 +14,7 @@ import { QueueModule } from './core/queue/queue.module.js';
 import { StorageModule } from './core/storage/storage.module.js';
 import { AuditLogModule } from './modules/audit-log/audit-log.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { FileModule } from './modules/file/file.module.js';
 import { type Env, envSchema } from './config/env.schema.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { UserModule } from './modules/user/user.module.js';
@@ -60,6 +61,7 @@ import { MS_PER_SECOND } from './common/constants/time.constants.js';
     StorageModule,
     AuditLogModule,
     AuthModule,
+    FileModule.forRoot(),
     UserModule,
     HealthModule,
   ],

@@ -30,6 +30,7 @@ model User {
 
   sessions      Session[]
   oneTimeTokens OneTimeToken[]
+  ownedFiles    StoredFile[]   @relation("StoredFileOwner")
 
   @@index([anonymizedAt, deletedAt])
 }
@@ -82,6 +83,41 @@ model OneTimeToken {
   issuedAt  DateTime  @default(now())
 
   @@unique([userId, purpose])
+}
+
+enum StoredFileStatus {
+  PENDING
+  READY
+}
+
+enum StoredFileVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+model StoredFile {
+  id         String               @id @default(uuid())
+  purpose    String
+  visibility StoredFileVisibility
+  status     StoredFileStatus     @default(PENDING)
+
+  ownerId String?
+  owner   User?   @relation("StoredFileOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  key          String? @unique
+  contentType  String
+  size         Int
+  width        Int?
+  height       Int?
+  variants     Json?
+  originalName String?
+
+  createdAt DateTime  @default(now())
+  readyAt   DateTime?
+
+  @@index([status, createdAt])
+  @@index([status, readyAt])
+  @@index([ownerId])
 }
 
 enum AuditOutcome {

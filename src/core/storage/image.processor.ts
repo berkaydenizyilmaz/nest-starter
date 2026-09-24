@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import sharp, { type Sharp } from 'sharp';
+import { detectContentType } from './content-type.util.js';
 import {
   IMAGE_CONCURRENCY,
   IMAGE_CONTENT_TYPE,
@@ -35,6 +36,11 @@ export class ImageProcessor {
 }
 
 async function render(spec: ImageSpec, input: Buffer): Promise<ProcessedImage> {
+  const detected = await detectContentType(input);
+  if (!detected || !spec.contentTypes.includes(detected)) {
+    throw new InvalidImageError();
+  }
+
   const source = sharp(input, {
     limitInputPixels: IMAGE_MAX_INPUT_PIXELS,
     autoOrient: true,

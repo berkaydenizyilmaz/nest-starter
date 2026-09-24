@@ -96,7 +96,8 @@
   başarısızlık kullanıcı ekrandan ayrıldıktan sonra ortaya çıkar. Böyle bir
   istekteki dış çağrının zaman aşımı ve tekrar sayısı kısa tutulur.
 - İş en az bir kez çalışır; handler tekrar çalıştığında zarar vermemeli.
-- Payload yalnızca id taşır; worker veriyi kendisi okur.
+- Payload yalnızca id taşır; worker veriyi kendisi okur. Silinmiş kaydı
+  temizleyen iş, temizlik için gereken alanları taşır.
 - Kullanıcının elle tekrarlayabildiği bir işin tekrar denemeleri, kullanıcıya
   uygulanan bekleme süresinin içinde bitmeli; yoksa iki sonuç üretir.
 

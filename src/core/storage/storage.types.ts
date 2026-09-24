@@ -1,6 +1,7 @@
 export type ImageFit = 'cover' | 'inside';
 
 export interface ImageSpec {
+  contentTypes: readonly string[];
   fit: ImageFit;
   maxEdge: number;
   variants: Readonly<Record<string, readonly [width: number, height: number]>>;
