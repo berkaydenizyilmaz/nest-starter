@@ -171,6 +171,12 @@ karakter) başlıklarını gönderebilir.
 `operationId`'ler metot adıdır (`listSessions`, `revokeSession`). Böylece
 `openapi-typescript` gibi bir araçla doğrudan tip üretilebilir.
 
+Spec kökteki `openapi.json`'da commit'li durur; istemci tipini bu dosyadan
+üretir, çalışan bir sunucuya ihtiyaç duymaz. Bir endpoint'in girdisi ya da
+çıktısı değişince `pnpm openapi:export` ile yeniden üret ve değişiklikle birlikte
+commit'le. Script uygulamayı veritabanına bağlanmadan kurar ama env
+doğrulamasından geçer; geçerli bir `.env` ister.
+
 ### Hata formatı
 
 Her hata aynı şekilde döner. İstemci `code` alanına bakar; `message`
@@ -617,6 +623,7 @@ ve birden fazla kopyada her tetiklenme tek bir iş üretir. Saatler
 | `pnpm start:prod`                          | Derlenmiş uygulamayı çalıştırır |
 | `pnpm lint`                                | oxlint (type-aware)             |
 | `pnpm format`                              | Prettier                        |
+| `pnpm openapi:export`                      | Spec'i `openapi.json`'a yazar   |
 | `pnpm exec prisma migrate dev --name <ad>` | Şema değişikliği için migration |
 | `pnpm exec prisma migrate deploy`          | Bekleyen migration'ları uygular |
 | `pnpm exec prisma studio`                  | Veritabanı arayüzü              |

@@ -1,16 +1,11 @@
-import { VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import {
-  DocumentBuilder,
-  SwaggerModule,
-  type SwaggerDocumentOptions,
-} from '@nestjs/swagger';
+import { SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
-import { createSchema } from 'zod-openapi';
 import { AppModule } from './app.module.js';
+import { configureRouting, createOpenApiDocument } from './app.setup.js';
 import type { Env } from './config/env.schema.js';
 
 async function bootstrap(): Promise<void> {
@@ -24,8 +19,7 @@ async function bootstrap(): Promise<void> {
   app.set('trust proxy', config.get('TRUST_PROXY', { infer: true }));
 
   app.use(helmet());
-  app.setGlobalPrefix('api');
-  app.enableVersioning({ type: VersioningType.URI });
+  configureRouting(app);
 
   const origins = config
     .get('CORS_ORIGINS', { infer: true })
@@ -39,7 +33,7 @@ async function bootstrap(): Promise<void> {
   });
 
   if (config.get('NODE_ENV', { infer: true }) !== 'production') {
-    setupSwagger(app);
+    SwaggerModule.setup('api/docs', app, createOpenApiDocument(app));
   }
 
   const port = config.get('PORT', { infer: true });
@@ -82,31 +76,6 @@ function registerShutdown(app: NestExpressApplication, logger: Logger): void {
 
   process.once('SIGTERM', () => void shutdown('SIGTERM'));
   process.once('SIGINT', () => void shutdown('SIGINT'));
-}
-
-function setupSwagger(app: Parameters<typeof SwaggerModule.setup>[1]): void {
-  const documentOptions: SwaggerDocumentOptions = {
-    operationIdFactory: (_controllerKey, methodKey) => methodKey,
-    standardSchemaConverter: (schema, { schemaType }) => {
-      const converted = createSchema(schema as never, {
-        io: schemaType,
-        openapiVersion: '3.0.0',
-      });
-      return { schema: converted.schema, components: converted.components };
-    },
-  };
-
-  const document = SwaggerModule.createDocument(
-    app,
-    new DocumentBuilder()
-      .setTitle('API')
-      .setVersion('1')
-      .addBearerAuth()
-      .build(),
-    documentOptions,
-  );
-
-  SwaggerModule.setup('api/docs', app, document);
 }
 
 await bootstrap();
