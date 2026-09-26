@@ -1400,13 +1400,25 @@
           "accessToken": {
             "type": "string"
           },
+          "accessTokenExpiresIn": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
           "refreshToken": {
             "type": "string"
+          },
+          "refreshTokenExpiresIn": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           }
         },
         "required": [
           "accessToken",
-          "refreshToken"
+          "accessTokenExpiresIn",
+          "refreshToken",
+          "refreshTokenExpiresIn"
         ],
         "additionalProperties": false
       },
@@ -1435,8 +1447,18 @@
           "accessToken": {
             "type": "string"
           },
+          "accessTokenExpiresIn": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
           "refreshToken": {
             "type": "string"
+          },
+          "refreshTokenExpiresIn": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "reactivated": {
             "type": "boolean"
@@ -1444,7 +1466,9 @@
         },
         "required": [
           "accessToken",
+          "accessTokenExpiresIn",
           "refreshToken",
+          "refreshTokenExpiresIn",
           "reactivated"
         ],
         "additionalProperties": false

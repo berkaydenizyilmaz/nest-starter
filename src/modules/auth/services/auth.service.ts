@@ -27,7 +27,12 @@ import {
   LOGIN_FAILURE_THRESHOLD,
 } from '../auth.constants.js';
 import type { AccessTokenPayload } from '../access-token.schema.js';
-import type { IssuedTokens, LoginResult, TokenSubject } from '../auth.types.js';
+import type {
+  IssuedSession,
+  IssuedTokens,
+  LoginResult,
+  TokenSubject,
+} from '../auth.types.js';
 import type { LoginRequest } from '../dto/request/login.request.js';
 import type { RegisterRequest } from '../dto/request/register.request.js';
 import { SessionService } from './session.service.js';
@@ -87,10 +92,7 @@ export class AuthService implements OnModuleInit {
       };
     });
 
-    return {
-      accessToken: await this.signAccessToken(user, issued.sessionId),
-      refreshToken: issued.token,
-    };
+    return this.issueTokens(user, issued);
   }
 
   async login(input: LoginRequest): Promise<LoginResult> {
@@ -180,20 +182,12 @@ export class AuthService implements OnModuleInit {
       return this.sessions.issue(user.id, tx);
     });
 
-    return {
-      accessToken: await this.signAccessToken(user, issued.sessionId),
-      refreshToken: issued.token,
-      reactivated,
-    };
+    return { ...(await this.issueTokens(user, issued)), reactivated };
   }
 
   async refresh(refreshToken: string): Promise<IssuedTokens> {
     const rotated = await this.sessions.rotate(refreshToken);
-
-    return {
-      accessToken: await this.signAccessToken(rotated.user, rotated.sessionId),
-      refreshToken: rotated.token,
-    };
+    return this.issueTokens(rotated.user, rotated);
   }
 
   async logout(refreshToken: string): Promise<void> {
@@ -266,20 +260,28 @@ export class AuthService implements OnModuleInit {
     });
   }
 
-  private signAccessToken(
+  private async issueTokens(
     user: TokenSubject,
-    sessionId: string,
-  ): Promise<string> {
+    session: IssuedSession,
+  ): Promise<IssuedTokens> {
+    const accessTokenExpiresIn = this.config.get('JWT_ACCESS_TTL', {
+      infer: true,
+    });
     const payload: AccessTokenPayload = {
       sub: user.id,
       role: user.role,
-      sid: sessionId,
+      sid: session.sessionId,
     };
 
-    return this.jwt.signAsync(payload, {
-      secret: this.config.get('JWT_ACCESS_SECRET', { infer: true }),
-      expiresIn: this.config.get('JWT_ACCESS_TTL', { infer: true }),
-    });
+    return {
+      accessToken: await this.jwt.signAsync(payload, {
+        secret: this.config.get('JWT_ACCESS_SECRET', { infer: true }),
+        expiresIn: accessTokenExpiresIn,
+      }),
+      accessTokenExpiresIn,
+      refreshToken: session.token,
+      refreshTokenExpiresIn: secondsUntil(session.expiresAt),
+    };
   }
 }
 
@@ -289,6 +291,10 @@ function failureHistoryForgotten(
 ): boolean {
   if (!lastFailedLoginAt) return true;
   return now.getTime() - lastFailedLoginAt.getTime() > LOGIN_FAILURE_DECAY_MS;
+}
+
+function secondsUntil(date: Date): number {
+  return Math.floor((date.getTime() - Date.now()) / MS_PER_SECOND);
 }
 
 function remainingLockSeconds(lockedUntil: Date | null): number {

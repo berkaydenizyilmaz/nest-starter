@@ -1,5 +1,12 @@
 import { z } from 'zod';
 
+const SECONDS_PER_UNIT = { s: 1, m: 60, h: 60 * 60, d: 24 * 60 * 60 } as const;
+
+function durationInSeconds(value: string): number {
+  const unit = value.slice(-1) as keyof typeof SECONDS_PER_UNIT;
+  return Number(value.slice(0, -1)) * SECONDS_PER_UNIT[unit];
+}
+
 const trustedProxy = z.union([
   z.enum(['loopback', 'linklocal', 'uniquelocal']),
   z.ipv4(),
@@ -22,7 +29,8 @@ export const envSchema = z
     JWT_ACCESS_TTL: z
       .string()
       .regex(/^[1-9]\d*[smhd]$/, 'Use a whole number with a unit: s, m, h or d')
-      .default('15m'),
+      .default('15m')
+      .transform(durationInSeconds),
     REFRESH_TTL_DAYS: z.coerce.number().int().positive().default(7),
 
     TRUST_PROXY: z

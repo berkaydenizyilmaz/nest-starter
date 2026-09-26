@@ -223,6 +223,11 @@ kilidi için `ACCOUNT_TEMPORARILY_LOCKED`. İstemci ikisini de tanımalı.
 bir değerdir; veritabanında yalnızca SHA-256 hash'i saklanır. Şifreler argon2
 ile hash'lenir (8–128 karakter).
 
+Token çifti her token'ın kalan ömrünü saniye olarak taşır
+(`accessTokenExpiresIn`, `refreshTokenExpiresIn`; OAuth'taki `expires_in`
+gibi). İstemci yenileme zamanını ve kendi saklama süresini buradan hesaplar,
+access token'ın içini okumaz.
+
 **Rotasyon ve çalınma tespiti.** Her refresh isteği yeni bir refresh token
 verir ve eskisini kullanılmış sayar. Bir oturumun verdiği bütün token'lar
 `RefreshToken` tablosunda bir aile olarak tutulur. Kullanılmış bir token tekrar

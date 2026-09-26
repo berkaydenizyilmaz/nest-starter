@@ -27,6 +27,7 @@ import {
   createOpaqueToken,
   hashOpaqueToken,
 } from '../../../core/opaque-token.util.js';
+import type { IssuedSession } from '../auth.types.js';
 
 @Injectable()
 export class SessionService {
@@ -40,7 +41,7 @@ export class SessionService {
   async issue(
     userId: string,
     client: Prisma.TransactionClient = this.prisma,
-  ): Promise<{ token: string; sessionId: string }> {
+  ): Promise<IssuedSession> {
     const token = createOpaqueToken(REFRESH_TOKEN_BYTES);
 
     const session = await client.session.create({
@@ -56,12 +57,10 @@ export class SessionService {
 
     await this.revokeBeyondLimit(userId, client);
 
-    return { token, sessionId: session.id };
+    return { token, sessionId: session.id, expiresAt: session.expiresAt };
   }
 
-  async rotate(
-    refreshToken: string,
-  ): Promise<{ token: string; user: User; sessionId: string }> {
+  async rotate(refreshToken: string): Promise<IssuedSession & { user: User }> {
     const stored = await this.prisma.refreshToken.findUnique({
       where: { tokenHash: hashOpaqueToken(refreshToken) },
       include: { session: { include: { user: true } } },
@@ -132,7 +131,12 @@ export class SessionService {
       }
     });
 
-    return { token, user: session.user, sessionId: session.id };
+    return {
+      token,
+      user: session.user,
+      sessionId: session.id,
+      expiresAt: session.expiresAt,
+    };
   }
 
   async revokeByToken(
