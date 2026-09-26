@@ -23,8 +23,8 @@ import { PrismaModule } from './core/prisma/prisma.module.js';
 import { RequestContextModule } from './core/request-context.module.js';
 import { AllExceptionsFilter } from './common/all-exceptions.filter.js';
 import { JwtAuthGuard } from './modules/auth/jwt-auth.guard.js';
-import { RolesGuard } from './common/roles.guard.js';
-import { RateLimitGuard } from './common/rate-limit.guard.js';
+import { RolesGuard } from './common/guards/roles.guard.js';
+import { RateLimitGuard } from './common/guards/rate-limit.guard.js';
 import { MS_PER_SECOND } from './common/constants/time.constants.js';
 
 @Module({
